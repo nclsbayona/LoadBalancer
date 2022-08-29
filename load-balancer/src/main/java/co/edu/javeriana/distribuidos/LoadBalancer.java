@@ -3,167 +3,18 @@ package co.edu.javeriana.distribuidos;
 // ZeroMQ imports
 import org.zeromq.ZMQ;
 import org.zeromq.ZMonitor;
-import org.zeromq.ZPoller;
-import org.zeromq.ZSocket;
 import org.zeromq.ZThread;
 import org.zeromq.ZMonitor.Event;
 import org.zeromq.ZMonitor.ZEvent;
 import org.zeromq.ZThread.IAttachedRunnable;
 import org.zeromq.ZContext;
-import org.zeromq.SocketType;
 
-// Socket management
-import java.net.ServerSocket;
-import java.net.Socket;
-import java.net.SocketException;
+import java.io.IOException;
+
+import org.zeromq.SocketType;
 
 // Signal handling support
 import sun.misc.Signal;
-import zmq.util.function.BiFunction;
-
-// Thread management
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-
-//Use time units to define an exit normal time
-import java.util.concurrent.TimeUnit;
-
-//Estas importaciones se realizan para poder leer el flujo de datos que se intenta enviar por el socket
-import java.io.BufferedReader;
-import java.io.InputStreamReader;
-
-//Estas importaciones se realizan para poder escribir em el flujo de salida los datos que se recuperaron de la solicitud
-import java.io.BufferedWriter;
-import java.io.IOException;
-import java.io.OutputStreamWriter;
-import java.io.PrintWriter;
-
-/*
- class Attend implements Runnable {
-
-    private Socket client;
-    private ZMQ.Socket balancing_socket;
-    private final static String TOPIC = "WebProxy";
-
-    Attend(Socket c, ZMQ.Socket balancing_socket) {
-        this.client = c;
-        this.balancing_socket = balancing_socket;
-    }
-
-    @Override
-    public void run() {
-        this.attend();
-    }
-
-    public void attend() {
-        // this.client has the client socket
-        // this.balancing_socket has the LB socket that must perform the queries
-        String msg = "";
-        String line;
-        try {
-            BufferedReader reading = new BufferedReader(new InputStreamReader(client.getInputStream()));
-            boolean end = false;
-            while (!end) {
-                // Read all data client is sending
-                line = reading.readLine();
-                // If line is empty, end, else add it to the message
-                if (line == null || line.length() == 0 || line.equals(""))
-                    end = true;
-                else {
-                    // If message is empty, just add line, else, add line in a newlinw
-                    msg += (msg.length() > 0) ? "\r\n" + line : line;
-                }
-            }
-        } catch (Exception e) {
-
-        }
-        // Send topic before
-        if (balancing_socket.send(TOPIC.getBytes(), ZMQ.SNDMORE | ZMQ.DONTWAIT))
-            System.out.println("\nMessage sent " + msg + ": " + balancing_socket.send(msg.getBytes(), ZMQ.DONTWAIT));
-    }
-}
-
-public class LoadBalancer {
-    // Thread management
-    private final ExecutorService ES = Executors.newCachedThreadPool();
-    // LoadBalancer port
-    private int port;
-    // In order to use Round-Robin, we can use DEALER SocketType
-    // https://github.com/zeromq/jeromq/blob/master/src/main/java/org/zeromq/SocketType.java.
-    // https://zguide.zeromq.org/docs/chapter5/ mentions Router-Dealer
-    private ZMQ.Socket balancing_socket;
-    // Load Balancer socket
-    private ServerSocket server_socket;
-
-    public void receive() {
-        this.startHandlers();
-        try (ZContext ctx = new ZContext()) { // To auto close executing threads
-            this.balancing_socket = ctx.createSocket(SocketType.PUB);
-            final int bind_port = 30216; // Greater than 1024
-            System.out.println("Binding to -> tcp://*:" + String.valueOf(bind_port));
-            this.balancing_socket.bind("tcp://*:" + String.valueOf(bind_port));
-            while (true) {
-                // Accept a client trying to access a resource, immediately redirect the query,
-                // so LoadBalancer can still work
-                Socket client = this.server_socket.accept();
-                try {
-                    client.setKeepAlive(true);
-                } catch (SocketException e) {
-                }
-                this.ES.execute(new Attend(client, this.balancing_socket));
-            }
-
-        } catch (Exception e) {
-            System.exit(1);
-        }
-    }
-
-    public void startHandlers() {
-        Signal.handle(new Signal("INT"), // SIGINT
-                signal -> {
-                    System.out.println("\nSIGINT received. Shutting down Load Balancer...");
-                    this.awaitEnding();
-                    System.out.println("Good Bye...");
-                    System.exit(0);
-                });
-        Signal.handle(new Signal("TERM"), // SIGTERM
-                signal -> {
-                    System.out.println("\nSIGTERM received. Shutting down Load Balancer...");
-                    this.awaitEnding();
-                    System.out.println("Good Bye...");
-                    System.exit(0);
-                });
-    }
-
-    private void awaitEnding() {
-        // Stop creating new threads
-        this.ES.shutdown();
-        try {
-            // Await for thread termination
-            if (!this.ES.awaitTermination(10, TimeUnit.SECONDS))
-                throw new Exception("No apaga");
-            return;
-        } catch (Exception e) {
-            // Kill all threads
-            this.ES.shutdownNow();
-            // End process
-            Thread.currentThread().interrupt();
-            // Exit with error
-            System.exit(1);
-        }
-    }
-
-    public LoadBalancer(int port) {
-        this.port = port;
-        try {
-            this.server_socket = new ServerSocket(this.port);
-            System.out.println("Load balancer on port " + String.valueOf(this.port) + "\n\n");
-        } catch (Exception e) {
-            System.out.println("Error creating the socket listening for http requests");
-        }
-    }
-}
- */
 
 public class LoadBalancer {
     // In order to use Round-Robin, we can use DEALER SocketType
@@ -176,32 +27,45 @@ public class LoadBalancer {
     private static int index = 0;
     private static final int NUM_SERVERS = 3;
 
-    private static class Listener implements IAttachedRunnable{
+    private static class Listener implements IAttachedRunnable {
 
         @Override
         public void run(Object[] args, ZContext ctx, org.zeromq.ZMQ.Socket pipe) {
-            ZEvent received = ((ZMonitor) args[0]).nextEvent();
-            System.out.println("Received event:" + received.code + "- "+received.value+" from: "+received.address );
+            while (true) {
+                ZEvent received = ((ZMonitor) args[0]).nextEvent();
+                System.out.println(args[1] + " received event: " + received.code + " - " + received.type + " from: "
+                        + received.address);
+            }
         }
 
     }
 
-    public void receive() throws InterruptedException, IOException {
+    public void receive() throws IOException {
         this.startHandlers();
+        try (ZMonitor zMonitor = new ZMonitor(ctx, this.balancing_socket)) {
 
-        try (ZMonitor zMonitor=new ZMonitor(ctx, this.balancing_socket)) {
-            zMonitor.verbose(true); //Verbose Monitor
+            ZMQ.Socket client = ctx.createSocket(SocketType.SUB);
+            /*
+             * ZMonitor zMonitor2=new ZMonitor(ctx, client);
+             * zMonitor2.add(Event.ALL);
+             * zMonitor2.start();
+             * ZThread.fork(ctx, new Listener(), zMonitor2, "Client");
+             */
+
+            //
+            zMonitor.verbose(false); // Verbose Monitor
             zMonitor.add(Event.ALL);
             zMonitor.start();
-            ZThread.fork(ctx, new Listener(), zMonitor);
+            ZThread.fork(ctx, new Listener(), zMonitor, "Server");
+            this.balancing_socket.bind("tcp://*:" + String.valueOf(this.bind_port));
+            ZMQ.sleep(2);
             // https://stackoverflow.com/questions/43329436/asynchronous-client-server-using-java-jeromq
-
             while (true) {
                 String topic = TOPIC[index];
                 this.balancing_socket.send(topic.getBytes(), ZMQ.SNDMORE);
-                this.balancing_socket.send(("Hola Mundo-" + topic).getBytes());
+                this.balancing_socket.send(("Hola Mundo - " + topic).getBytes());
                 index = (index + 1) % NUM_SERVERS;
-                Thread.sleep(2000);
+                ZMQ.sleep(1);
             }
         }
     }
@@ -223,7 +87,6 @@ public class LoadBalancer {
 
     public LoadBalancer() {
         this.balancing_socket = ctx.createSocket(SocketType.PUB);
-        this.balancing_socket.bind("tcp://*:" + String.valueOf(this.bind_port));
     }
 }
 

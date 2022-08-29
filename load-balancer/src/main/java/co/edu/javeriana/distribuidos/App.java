@@ -8,7 +8,7 @@ import java.io.IOException;
  */
 public class App 
 {
-    public static void main( String[] args ) throws InterruptedException, IOException
+    public static void main( String[] args ) throws IOException
     {
         LoadBalancer LB=new LoadBalancer();
         System.out.println("Ready...");

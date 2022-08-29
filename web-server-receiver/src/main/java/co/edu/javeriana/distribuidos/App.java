@@ -9,7 +9,7 @@ import org.zeromq.ZMQ;
 public class App {
     public static void main(String... args) {
         WebProxy WP = new WebProxy("127.0.0.1", 30216);
-        ZMQ.sleep(2);
+        ZMQ.sleep(1);
         System.out.println("Ready to accept messages");
         WP.receive();
     }

@@ -10,6 +10,7 @@ import org.zeromq.ZThread.IAttachedRunnable;
 import org.zeromq.ZContext;
 
 import java.io.IOException;
+import java.util.ArrayList;
 
 import org.zeromq.SocketType;
 
@@ -23,9 +24,10 @@ public class LoadBalancer {
     private ZContext ctx = new ZContext();
     private ZMQ.Socket balancing_socket;
     private final int bind_port = 30216; // Greater than 1024
-    private final static String[] TOPIC = { "A", "B", "C" };
+    private ArrayList<String> topics;
     private static int index = 0;
-    private static final int NUM_SERVERS = 3;
+    private static int NUM_SERVERS = 0;
+    private static int LAST_SERVER = 0;
 
     private static class Listener implements IAttachedRunnable {
 
@@ -33,39 +35,47 @@ public class LoadBalancer {
         public void run(Object[] args, ZContext ctx, org.zeromq.ZMQ.Socket pipe) {
             while (true) {
                 ZEvent received = ((ZMonitor) args[0]).nextEvent();
-                System.out.println(args[1] + " received event: " + received.code + " - " + received.type + " from: "
+                System.out.println(args[2] + " received event: " + received.code + " - " + received.type + " from: "
                         + received.address);
+                if (received.type == Event.HANDSHAKE_PROTOCOL) {
+                    
+                } else if (received.type == Event.DISCONNECTED) {
+                    NUM_SERVERS--;
+                    // Just for testing
+                    LoadBalancer LB = ((LoadBalancer) (args[1]));
+                    LB.topics.remove(NUM_SERVERS);
+
+                }
             }
         }
-
     }
 
     public void receive() throws IOException {
         this.startHandlers();
         try (ZMonitor zMonitor = new ZMonitor(ctx, this.balancing_socket)) {
-
-            ZMQ.Socket client = ctx.createSocket(SocketType.SUB);
-            /*
-             * ZMonitor zMonitor2=new ZMonitor(ctx, client);
-             * zMonitor2.add(Event.ALL);
-             * zMonitor2.start();
-             * ZThread.fork(ctx, new Listener(), zMonitor2, "Client");
-             */
-
-            //
             zMonitor.verbose(false); // Verbose Monitor
             zMonitor.add(Event.ALL);
             zMonitor.start();
-            ZThread.fork(ctx, new Listener(), zMonitor, "Server");
+            ZThread.fork(ctx, new Listener(), zMonitor, this, "Server");
             this.balancing_socket.bind("tcp://*:" + String.valueOf(this.bind_port));
             ZMQ.sleep(2);
             // https://stackoverflow.com/questions/43329436/asynchronous-client-server-using-java-jeromq
+
+            System.out.println("Starting to send messages...");
             while (true) {
-                String topic = TOPIC[index];
-                this.balancing_socket.send(topic.getBytes(), ZMQ.SNDMORE);
-                this.balancing_socket.send(("Hola Mundo - " + topic).getBytes());
-                index = (index + 1) % NUM_SERVERS;
-                ZMQ.sleep(1);
+                System.out.println("Index is " + index + " NUM_SERVERS is " + NUM_SERVERS + " LAST_SERVER is " + LAST_SERVER);
+                if (NUM_SERVERS > 0) {
+                    try {
+                        String topic = topics.get(index);
+                        String msg = "Hola mundo - " + topic;
+                        System.out.println("Sending to topic " + topic);
+                        this.balancing_socket.send(topic.getBytes(), ZMQ.SNDMORE);
+                        this.balancing_socket.send(msg.getBytes());
+                        index = (index + 1) % NUM_SERVERS;
+                        ZMQ.sleep(2);
+                    } catch (Exception e) {
+                    }
+                }
             }
         }
     }
@@ -87,6 +97,7 @@ public class LoadBalancer {
 
     public LoadBalancer() {
         this.balancing_socket = ctx.createSocket(SocketType.PUB);
+        this.topics = new ArrayList<>();
     }
 }
 

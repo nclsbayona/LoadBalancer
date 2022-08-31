@@ -6,7 +6,7 @@ package co.edu.javeriana.distribuidos;
  */
 public class App2 {
     public static void main(String... args) {
-        WebProxy2 WP = new WebProxy2("192.168.10.29", 30216);
+        WebProxy2 WP = new WebProxy2("127.0.0.1", 30216);
         try {
             Thread.sleep(3000);
         } catch (InterruptedException e) {

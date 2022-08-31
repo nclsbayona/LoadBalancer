@@ -10,7 +10,6 @@ import org.zeromq.ZThread.IAttachedRunnable;
 import org.zeromq.ZContext;
 
 import java.io.IOException;
-import java.util.ArrayList;
 
 import org.zeromq.SocketType;
 
@@ -19,63 +18,67 @@ import sun.misc.Signal;
 
 public class LoadBalancer {
     // In order to use Round-Robin, we can use DEALER SocketType
-    // https://github.com/zeromq/jeromq/blob/master/src/main/java/org/zeromq/SocketType.java.
     // https://zguide.zeromq.org/docs/chapter5/ mentions Router-Dealer
-    private ZContext ctx = new ZContext();
-    private ZMQ.Socket balancing_socket;
-    private final int bind_port = 30216; // Greater than 1024
-    private ArrayList<String> topics;
-    private static int index = 0;
-    private static int NUM_SERVERS = 0;
-    private static int LAST_SERVER = 0;
+    // See https://zguide.zeromq.org/docs/chapter4/#reliable-request-reply patterns
+    private ZContext ctx;
+    private ZMQ.Socket frontend_socket;
+    private ZMQ.Socket backend_socket;
+    private final int SERVICE_PORT = 8080; // The port that LoadBalancer should be receiving requests on
+    private final int BIND_PORT = 30216; // The port that LoadBalancer should be using to query servers
 
+    // We can follow a Simple pirate pattern approach and include the heartbeats
     private static class Listener implements IAttachedRunnable {
 
         @Override
         public void run(Object[] args, ZContext ctx, org.zeromq.ZMQ.Socket pipe) {
             while (true) {
                 ZEvent received = ((ZMonitor) args[0]).nextEvent();
-                System.out.println(args[2] + " received event: " + received.code + " - " + received.type + " from: "
+                System.out.println(args[1] + " received event: " + received.code + " - " + received.type + " from: "
                         + received.address);
-                if (received.type == Event.HANDSHAKE_PROTOCOL) {
-                    
-                } else if (received.type == Event.DISCONNECTED) {
-                    NUM_SERVERS--;
-                    // Just for testing
-                    LoadBalancer LB = ((LoadBalancer) (args[1]));
-                    LB.topics.remove(NUM_SERVERS);
-
-                }
             }
         }
     }
 
     public void receive() throws IOException {
         this.startHandlers();
-        try (ZMonitor zMonitor = new ZMonitor(ctx, this.balancing_socket)) {
-            zMonitor.verbose(false); // Verbose Monitor
+        try (ZMonitor zMonitor = new ZMonitor(ctx, this.backend_socket);
+                ZMonitor zMonitor2 = new ZMonitor(ctx, this.frontend_socket)) {
+            // Monitor the backend socket
+            zMonitor.verbose(true); // Verbose Monitor
             zMonitor.add(Event.ALL);
             zMonitor.start();
-            ZThread.fork(ctx, new Listener(), zMonitor, this, "Server");
-            this.balancing_socket.bind("tcp://*:" + String.valueOf(this.bind_port));
+            ZThread.fork(ctx, new Listener(), zMonitor, "Backend Server");
+            // Monitor the frontend socket
+            zMonitor2.verbose(true); // Verbose Monitor
+            zMonitor2.add(Event.ALL);
+            zMonitor2.start();
+            ZThread.fork(ctx, new Listener(), zMonitor2, "Frontend Server");
+            //
+            this.frontend_socket.bind("tcp://*:" + String.valueOf(this.SERVICE_PORT));
+            this.backend_socket.bind("tcp://*:" + String.valueOf(this.BIND_PORT));
             ZMQ.sleep(2);
-            // https://stackoverflow.com/questions/43329436/asynchronous-client-server-using-java-jeromq
 
             System.out.println("Starting to send messages...");
+            int i = 0;
             while (true) {
-                System.out.println("Index is " + index + " NUM_SERVERS is " + NUM_SERVERS + " LAST_SERVER is " + LAST_SERVER);
-                if (NUM_SERVERS > 0) {
-                    try {
-                        String topic = topics.get(index);
-                        String msg = "Hola mundo - " + topic;
-                        System.out.println("Sending to topic " + topic);
-                        this.balancing_socket.send(topic.getBytes(), ZMQ.SNDMORE);
-                        this.balancing_socket.send(msg.getBytes());
-                        index = (index + 1) % NUM_SERVERS;
-                        ZMQ.sleep(2);
-                    } catch (Exception e) {
-                    }
-                }
+                /*
+                 * When we use a DEALER to talk to a REP socket, we must accurately emulate the
+                 * envelope that the REQ socket would have sent, or the REP socket will discard
+                 * the message as invalid. So, to send a message, we:
+                 * 
+                 * Send an empty message frame with the MORE flag set; then
+                 * Send the message body.
+                 * And when we receive a message, we:
+                 * 
+                 * Receive the first frame and if it’s not empty, discard the whole message;
+                 * (This is made automatically)
+                 * Receive the next frame and pass that to the application.
+                 */
+                String msg = "Hola mundo - " + i++;
+                this.backend_socket.sendMore("");
+                this.backend_socket.send(msg);
+                System.out.println("Sent message");
+                ZMQ.sleep(1);
             }
         }
     }
@@ -96,120 +99,15 @@ public class LoadBalancer {
     }
 
     public LoadBalancer() {
-        this.balancing_socket = ctx.createSocket(SocketType.PUB);
-        this.topics = new ArrayList<>();
+        // I believe that publisher-subscriber is less
+        // adequate than request-reply. See Code Connected
+        // by Pieter Hientjens "knowledge is distributed
+        // and the more static pieces you have, the more
+        // effort it is to change the topology." Page 50 is
+        // important for understanding this
+        // http://hintjens.wdfiles.com/local--files/main%3Afiles/cc1pe.pdf
+        this.ctx = new ZContext();
+        this.frontend_socket = ctx.createSocket(SocketType.ROUTER);
+        this.backend_socket = ctx.createSocket(SocketType.DEALER);
     }
 }
-
-/*
- * Can check this to understand pub-sub
- * package guide;
- * 
- * import java.util.Random;
- * 
- * import org.zeromq.*;
- * import org.zeromq.ZMQ.Socket;
- * import org.zeromq.ZThread.IAttachedRunnable;
- * 
- * // Espresso Pattern
- * // This shows how to capture data using a pub-sub proxy
- * public class espresso
- * {
- * // The subscriber thread requests messages starting with
- * // A and B, then reads and counts incoming messages.
- * private static class Subscriber implements IAttachedRunnable
- * {
- * 
- * @Override
- * public void run(Object[] args, ZContext ctx, Socket pipe)
- * {
- * // Subscribe to "A" and "B"
- * Socket subscriber = ctx.createSocket(SocketType.SUB);
- * subscriber.connect("tcp://localhost:6001");
- * subscriber.subscribe("A".getBytes(ZMQ.CHARSET));
- * subscriber.subscribe("B".getBytes(ZMQ.CHARSET));
- * 
- * int count = 0;
- * while (count < 5) {
- * String string = subscriber.recvStr();
- * if (string == null)
- * break; // Interrupted
- * count++;
- * }
- * ctx.destroySocket(subscriber);
- * }
- * }
- * 
- * // .split publisher thread
- * // The publisher sends random messages starting with A-J:
- * private static class Publisher implements IAttachedRunnable
- * {
- * 
- * @Override
- * public void run(Object[] args, ZContext ctx, Socket pipe)
- * {
- * Socket publisher = ctx.createSocket(SocketType.PUB);
- * publisher.bind("tcp://*:6000");
- * Random rand = new Random(System.currentTimeMillis());
- * 
- * while (!Thread.currentThread().isInterrupted()) {
- * String string = String.format("%c-%05d", 'A' + rand.nextInt(10),
- * rand.nextInt(100000));
- * if (!publisher.send(string))
- * break; // Interrupted
- * try {
- * Thread.sleep(100); // Wait for 1/10th second
- * }
- * catch (InterruptedException e) {
- * }
- * }
- * ctx.destroySocket(publisher);
- * }
- * }
- * 
- * // .split listener thread
- * // The listener receives all messages flowing through the proxy, on its
- * // pipe. In CZMQ, the pipe is a pair of ZMQ_PAIR sockets that connect
- * // attached child threads. In other languages your mileage may vary:
- * private static class Listener implements IAttachedRunnable
- * {
- * 
- * @Override
- * public void run(Object[] args, ZContext ctx, Socket pipe)
- * {
- * // Print everything that arrives on pipe
- * while (true) {
- * ZFrame frame = ZFrame.recvFrame(pipe);
- * if (frame == null)
- * break; // Interrupted
- * frame.print(null);
- * frame.destroy();
- * }
- * }
- * }
- * 
- * // .split main thread
- * // The main task starts the subscriber and publisher, and then sets
- * // itself up as a listening proxy. The listener runs as a child thread:
- * public static void main(String[] argv)
- * {
- * try (ZContext ctx = new ZContext()) {
- * // Start child threads
- * ZThread.fork(ctx, new Publisher());
- * ZThread.fork(ctx, new Subscriber());
- * 
- * Socket subscriber = ctx.createSocket(SocketType.XSUB);
- * subscriber.connect("tcp://localhost:6000");
- * Socket publisher = ctx.createSocket(SocketType.XPUB);
- * publisher.bind("tcp://*:6001");
- * Socket listener = ZThread.fork(ctx, new Listener());
- * ZMQ.proxy(subscriber, publisher, listener);
- * 
- * System.out.println(" interrupted");
- * 
- * // NB: child threads exit here when the context is closed
- * }
- * }
- * }
- * https://www.youtube.com/watch?v=glp3I3Ycl9k Front and back in spring
- */

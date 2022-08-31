@@ -44,7 +44,12 @@ public class LoadBalancer {
         @Override
         public void run(Object[] args, ZContext ctx, org.zeromq.ZMQ.Socket pipe) {
             String msg = (String) args[0];
+            ZMQ.Socket backend=(ZMQ.Socket) args[1];
             System.out.println("Have to send " + msg);
+            backend.send("".getBytes(), ZMQ.SNDMORE);
+            backend.send(msg.getBytes());
+            System.out.println(backend.recvStr(0));
+            
         }
     }
 
@@ -66,8 +71,6 @@ public class LoadBalancer {
             this.frontend_socket.bind("tcp://*:" + String.valueOf(this.SERVICE_PORT));
             this.backend_socket.bind("tcp://*:" + String.valueOf(this.BIND_PORT));
             ZMQ.sleep(2);
-
-            System.out.println("Starting to send messages...");
             while (true) {
                 /*
                  * When we use a DEALER to talk to a REP socket, we must accurately emulate the
@@ -83,8 +86,11 @@ public class LoadBalancer {
                  * Receive the next frame and pass that to the application.
                  */
                 try {
-                    String msg = this.frontend_socket.recvStr(0); // Wait for a message
-                    ZThread.fork(ctx, new ReplySender(), msg);
+                    String msg = "";
+                    do {
+                        msg = this.frontend_socket.recvStr(0); // Wait for a message
+                    } while (this.frontend_socket.hasReceiveMore());
+                    ZThread.fork(ctx, new ReplySender(), msg, this.backend_socket);
                 } catch (Exception e) {
                 }
                 /*

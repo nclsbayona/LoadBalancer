@@ -12,6 +12,6 @@ public class App
     {
         LoadBalancer LB=new LoadBalancer();
         System.out.println("Ready...");
-        LB.receive();
+        LB.receiveAndSend();
     }
 }

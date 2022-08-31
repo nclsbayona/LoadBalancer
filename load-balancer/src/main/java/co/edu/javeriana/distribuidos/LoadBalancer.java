@@ -39,7 +39,16 @@ public class LoadBalancer {
         }
     }
 
-    public void receive() throws IOException {
+    private static class ReplySender implements IAttachedRunnable {
+
+        @Override
+        public void run(Object[] args, ZContext ctx, org.zeromq.ZMQ.Socket pipe) {
+            String msg = (String) args[0];
+            System.out.println("Have to send " + msg);
+        }
+    }
+
+    public void receiveAndSend() throws IOException {
         this.startHandlers();
         try (ZMonitor zMonitor = new ZMonitor(ctx, this.backend_socket);
                 ZMonitor zMonitor2 = new ZMonitor(ctx, this.frontend_socket)) {
@@ -59,7 +68,6 @@ public class LoadBalancer {
             ZMQ.sleep(2);
 
             System.out.println("Starting to send messages...");
-            int i = 0;
             while (true) {
                 /*
                  * When we use a DEALER to talk to a REP socket, we must accurately emulate the
@@ -74,11 +82,18 @@ public class LoadBalancer {
                  * (This is made automatically)
                  * Receive the next frame and pass that to the application.
                  */
-                String msg = "Hola mundo - " + i++;
-                this.backend_socket.sendMore("");
-                this.backend_socket.send(msg);
-                System.out.println("Sent message");
-                ZMQ.sleep(1);
+                try {
+                    String msg = this.frontend_socket.recvStr(0); // Wait for a message
+                    ZThread.fork(ctx, new ReplySender(), msg);
+                } catch (Exception e) {
+                }
+                /*
+                 * String msg = "Hola mundo - " + i++;
+                 * this.backend_socket.sendMore("");
+                 * this.backend_socket.send(msg);
+                 * System.out.println("Sent message");
+                 * ZMQ.sleep(1);
+                 */
             }
         }
     }

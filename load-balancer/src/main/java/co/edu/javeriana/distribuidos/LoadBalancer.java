@@ -45,11 +45,17 @@ public class LoadBalancer {
         public void run(Object[] args, ZContext ctx, org.zeromq.ZMQ.Socket pipe) {
             String msg = (String) args[0];
             ZMQ.Socket backend=(ZMQ.Socket) args[1];
-            System.out.println("Have to send " + msg);
+            ZMQ.Socket frontend=(ZMQ.Socket) args[2];
+            System.out.println("Frontend to backend " + msg);
             backend.send("".getBytes(), ZMQ.SNDMORE);
             backend.send(msg.getBytes());
-            System.out.println(backend.recvStr(0));
-            
+            String response="";
+            do{
+                response=backend.recvStr(0);
+            } while (backend.hasReceiveMore());
+            System.out.println("Backend to frontend " + response);
+            frontend.send("", ZMQ.SNDMORE);
+            frontend.send(response);          
         }
     }
 
@@ -90,7 +96,7 @@ public class LoadBalancer {
                     do {
                         msg = this.frontend_socket.recvStr(0); // Wait for a message
                     } while (this.frontend_socket.hasReceiveMore());
-                    ZThread.fork(ctx, new ReplySender(), msg, this.backend_socket);
+                    ZThread.fork(ctx, new ReplySender(), msg, this.backend_socket, this.frontend_socket);
                 } catch (Exception e) {
                 }
                 /*

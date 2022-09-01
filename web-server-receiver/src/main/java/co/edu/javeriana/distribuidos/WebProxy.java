@@ -3,7 +3,6 @@ package co.edu.javeriana.distribuidos;
 //ZeroMQ sockets
 import org.zeromq.ZMQ.Socket;
 import org.zeromq.ZContext;
-import org.zeromq.ZMQ;
 import org.zeromq.SocketType;
 
 // Signal handling support
@@ -22,7 +21,7 @@ public class WebProxy {
             String msg="Server responding";
             System.out.println("Should send "+msg);
             //
-            this.subscriber.send(msg.getBytes());
+            this.subscriber.send(msg);
         }
     }
 

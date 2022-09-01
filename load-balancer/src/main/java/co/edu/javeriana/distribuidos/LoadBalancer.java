@@ -47,15 +47,14 @@ public class LoadBalancer {
             ZMQ.Socket backend=(ZMQ.Socket) args[1];
             ZMQ.Socket frontend=(ZMQ.Socket) args[2];
             System.out.println("Frontend to backend " + msg);
-            backend.send("".getBytes(), ZMQ.SNDMORE);
+            backend.sendMore("");
             backend.send(msg.getBytes());
             String response="";
             do{
                 response=backend.recvStr(0);
             } while (backend.hasReceiveMore());
             System.out.println("Backend to frontend " + response);
-            frontend.send("", ZMQ.SNDMORE);
-            frontend.send(response);          
+            frontend.sendMore(response);    
         }
     }
 

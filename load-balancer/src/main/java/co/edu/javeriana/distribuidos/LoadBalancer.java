@@ -10,6 +10,7 @@ import org.zeromq.ZThread.IAttachedRunnable;
 import org.zeromq.ZContext;
 
 import java.io.IOException;
+import java.util.ArrayList;
 
 import org.zeromq.SocketType;
 
@@ -44,17 +45,24 @@ public class LoadBalancer {
         @Override
         public void run(Object[] args, ZContext ctx, org.zeromq.ZMQ.Socket pipe) {
             String msg = (String) args[0];
-            ZMQ.Socket backend=(ZMQ.Socket) args[1];
-            ZMQ.Socket frontend=(ZMQ.Socket) args[2];
+            ZMQ.Socket backend = (ZMQ.Socket) args[1];
+            ZMQ.Socket frontend = (ZMQ.Socket) args[2];
             System.out.println("Frontend to backend " + msg);
             backend.sendMore("");
-            backend.send(msg.getBytes());
-            String response="";
-            do{
-                response=backend.recvStr(0);
+            backend.send(msg.getBytes(ZMQ.CHARSET));
+            ArrayList<byte[]> response = new ArrayList<>();
+            do {
+                response.add(backend.recv(0));
             } while (backend.hasReceiveMore());
             System.out.println("Backend to frontend " + response);
-            frontend.sendMore(response);    
+            /*
+             * Sending :[B@15de712d more? true
+             * Sending :[B@7d3cdd26 more? true
+             * Sending :[B@65e527a8 more? false
+             */
+            for (int i = 0; i < response.size() - 1; ++i)
+                frontend.sendMore(response.get(i));
+            frontend.send(response.get(response.size() - 1));
         }
     }
 

@@ -11,8 +11,6 @@ import org.zeromq.ZContext;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Arrays;
-
 import org.zeromq.SocketType;
 
 // Signal handling support
@@ -45,11 +43,11 @@ public class LoadBalancer {
 
         @Override
         public void run(Object[] args, ZContext ctx, org.zeromq.ZMQ.Socket pipe) {
-            byte[] id=(byte[])(args[0]);
-            byte[] msg=(byte[])(args[1]);
+            byte[] id = (byte[]) (args[0]);
+            byte[] msg = (byte[]) (args[1]);
             ZMQ.Socket backend = (ZMQ.Socket) args[2];
             ZMQ.Socket frontend = (ZMQ.Socket) args[3];
-            System.out.println("ID: "+id+" Frontend to backend " + msg);
+            System.out.println("ID: " + id + " Frontend to backend " + msg);
             backend.sendMore(id);
             backend.sendMore(ZMQ.MESSAGE_SEPARATOR);
             backend.send(msg);
@@ -101,7 +99,8 @@ public class LoadBalancer {
                     do {
                         message.add(this.frontend_socket.recv(0)); // Wait for a message
                     } while (this.frontend_socket.hasReceiveMore());
-                    ZThread.fork(ctx, new ReplySender(), message.get(0), message.get(2), this.backend_socket, this.frontend_socket);
+                    ZThread.fork(ctx, new ReplySender(), message.get(0), message.get(2), this.backend_socket,
+                            this.frontend_socket);
                 } catch (Exception e) {
                 }
                 /*

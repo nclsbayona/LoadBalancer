@@ -8,27 +8,20 @@ import org.zeromq.SocketType;
 // Signal handling support
 import sun.misc.Signal;
 
-public class WebProxy2 {
+public class WebServer {
     private ZContext context;
     private Socket subscriber;
 
     public void receive() {
         this.startHandlers();
-        
         while (true) {
             String receivedString = this.subscriber.recvStr();
+            // Perform task
             System.out.println("Received message " + receivedString);
-        }
-    }
-
-    WebProxy2(String url, int port) {
-        try {
-            context = new ZContext();
-            this.subscriber = context.createSocket(SocketType.REP);
-            this.subscriber.connect("tcp://" + url + ":" + String.valueOf(port));
-        } catch (Exception e) {
-            System.out.println("Error");
-            e.printStackTrace();
+            String msg="Server responding";
+            System.out.println("Should send "+msg);
+            //
+            this.subscriber.send(msg);
         }
     }
 
@@ -46,4 +39,17 @@ public class WebProxy2 {
                     System.exit(0);
                 });
     }
+
+    WebServer(String url, int port) {
+        try {
+            context = new ZContext();
+            this.subscriber = context.createSocket(SocketType.REP);
+            this.subscriber.connect("tcp://" + url + ":" + String.valueOf(port));
+            System.out.println("Worker ready...");
+        } catch (Exception e) {
+            System.out.println("Error");
+            e.printStackTrace();
+        }
+    }
+
 }

@@ -11,6 +11,7 @@ import org.zeromq.ZContext;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 
 import org.zeromq.SocketType;
 
@@ -44,22 +45,19 @@ public class LoadBalancer {
 
         @Override
         public void run(Object[] args, ZContext ctx, org.zeromq.ZMQ.Socket pipe) {
-            String msg = (String) args[0];
-            ZMQ.Socket backend = (ZMQ.Socket) args[1];
-            ZMQ.Socket frontend = (ZMQ.Socket) args[2];
-            System.out.println("Frontend to backend " + msg);
-            backend.sendMore("");
-            backend.send(msg.getBytes(ZMQ.CHARSET));
+            byte[] id=(byte[])(args[0]);
+            byte[] msg=(byte[])(args[1]);
+            ZMQ.Socket backend = (ZMQ.Socket) args[2];
+            ZMQ.Socket frontend = (ZMQ.Socket) args[3];
+            System.out.println("ID: "+id+" Frontend to backend " + msg);
+            backend.sendMore(id);
+            backend.sendMore(ZMQ.MESSAGE_SEPARATOR);
+            backend.send(msg);
             ArrayList<byte[]> response = new ArrayList<>();
             do {
                 response.add(backend.recv(0));
             } while (backend.hasReceiveMore());
             System.out.println("Backend to frontend " + response);
-            /*
-             * Sending :[B@15de712d more? true
-             * Sending :[B@7d3cdd26 more? true
-             * Sending :[B@65e527a8 more? false
-             */
             for (int i = 0; i < response.size() - 1; ++i)
                 frontend.sendMore(response.get(i));
             frontend.send(response.get(response.size() - 1));
@@ -99,11 +97,11 @@ public class LoadBalancer {
                  * Receive the next frame and pass that to the application.
                  */
                 try {
-                    String msg = "";
+                    ArrayList<byte[]> message = new ArrayList<>();
                     do {
-                        msg = this.frontend_socket.recvStr(0); // Wait for a message
+                        message.add(this.frontend_socket.recv(0)); // Wait for a message
                     } while (this.frontend_socket.hasReceiveMore());
-                    ZThread.fork(ctx, new ReplySender(), msg, this.backend_socket, this.frontend_socket);
+                    ZThread.fork(ctx, new ReplySender(), message.get(0), message.get(2), this.backend_socket, this.frontend_socket);
                 } catch (Exception e) {
                 }
                 /*

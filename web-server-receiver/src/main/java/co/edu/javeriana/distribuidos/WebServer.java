@@ -36,13 +36,13 @@ public class WebServer {
     public void startHandlers() {
         Signal.handle(new Signal("INT"), // SIGINT
                 signal -> {
-                    System.out.println("\nSIGINT received. Shutting down Proxy...");
+                    System.out.println("\nSIGINT received. Shutting down Server...");
                     System.out.println("Good Bye...");
                     System.exit(0);
                 });
         Signal.handle(new Signal("TERM"), // SIGTERM
                 signal -> {
-                    System.out.println("\nSIGTERM received. Shutting down Proxy...");
+                    System.out.println("\nSIGTERM received. Shutting down Server...");
                     System.out.println("Good Bye...");
                     System.exit(0);
                 });
@@ -59,5 +59,4 @@ public class WebServer {
             e.printStackTrace();
         }
     }
-
 }

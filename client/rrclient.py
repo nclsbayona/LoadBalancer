@@ -18,7 +18,7 @@ class Client:
 
 
 if __name__=='__main__':
-    url="localhost"
+    url="127.0.0.1"
     port=8080
     client=Client(url=url, port=port)
     client.receive()

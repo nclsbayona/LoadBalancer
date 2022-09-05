@@ -26,6 +26,13 @@ public class LoadBalancer {
     private final int SERVICE_PORT = 8080; // The port that LoadBalancer should be receiving requests on
     private final int BIND_PORT = 30216; // The port that LoadBalancer should be using to query servers
 
+    public static void main( String[] args ) throws IOException
+    {
+        LoadBalancer LB=new LoadBalancer();
+        System.out.println("Ready...");
+        LB.receiveAndSend();
+    }
+
     // We can follow a Simple pirate pattern approach and include the heartbeats
     private static class Listener implements IAttachedRunnable {
 
@@ -43,19 +50,23 @@ public class LoadBalancer {
 
         @Override
         public void run(Object[] args, ZContext ctx, org.zeromq.ZMQ.Socket pipe) {
-            byte[] id = (byte[]) (args[0]);
-            byte[] msg = (byte[]) (args[1]);
-            ZMQ.Socket backend = (ZMQ.Socket) args[2];
-            ZMQ.Socket frontend = (ZMQ.Socket) args[3];
+            // In order to communicate between ROUTER and REQ Sockets, It's neccessary to send the ID first
+            byte[] id = (byte[]) (args[0]); //Get the ID of the REQ socket
+            byte[] msg = (byte[]) (args[1]); //Get the message that needs to be processed
+            ZMQ.Socket backend = (ZMQ.Socket) args[2]; //Backend Socket
+            ZMQ.Socket frontend = (ZMQ.Socket) args[3]; //Frontend Socket
             System.out.println("ID: " + id + " Frontend to backend " + msg);
+            //Send to backend
             backend.sendMore(id);
             backend.sendMore(ZMQ.MESSAGE_SEPARATOR);
             backend.send(msg);
+            //Get response from backend
             ArrayList<byte[]> response = new ArrayList<>();
             do {
                 response.add(backend.recv(0));
             } while (backend.hasReceiveMore());
             System.out.println("Backend to frontend " + response);
+            //Send response from backend to frontend
             for (int i = 0; i < response.size() - 1; ++i)
                 frontend.sendMore(response.get(i));
             frontend.send(response.get(response.size() - 1));
@@ -76,7 +87,7 @@ public class LoadBalancer {
             zMonitor2.add(Event.ALL);
             zMonitor2.start();
             ZThread.fork(ctx, new Listener(), zMonitor2, "Frontend Server");
-            //
+            // Bind sockets
             this.frontend_socket.bind("tcp://*:" + String.valueOf(this.SERVICE_PORT));
             this.backend_socket.bind("tcp://*:" + String.valueOf(this.BIND_PORT));
             ZMQ.sleep(2);
@@ -91,25 +102,17 @@ public class LoadBalancer {
                  * And when we receive a message, we:
                  * 
                  * Receive the first frame and if it’s not empty, discard the whole message;
-                 * (This is made automatically)
                  * Receive the next frame and pass that to the application.
                  */
                 try {
                     ArrayList<byte[]> message = new ArrayList<>();
                     do {
-                        message.add(this.frontend_socket.recv(0)); // Wait for a message
+                        message.add(this.frontend_socket.recv(0)); // Wait for a message and add each part to an array list
                     } while (this.frontend_socket.hasReceiveMore());
                     ZThread.fork(ctx, new ReplySender(), message.get(0), message.get(2), this.backend_socket,
-                            this.frontend_socket);
+                            this.frontend_socket);  //Create a ReplySender
                 } catch (Exception e) {
                 }
-                /*
-                 * String msg = "Hola mundo - " + i++;
-                 * this.backend_socket.sendMore("");
-                 * this.backend_socket.send(msg);
-                 * System.out.println("Sent message");
-                 * ZMQ.sleep(1);
-                 */
             }
         }
     }

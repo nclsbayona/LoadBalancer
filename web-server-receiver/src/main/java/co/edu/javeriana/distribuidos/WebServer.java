@@ -12,6 +12,14 @@ public class WebServer {
     private ZContext context;
     private Socket subscriber;
 
+    public static void main(String... args) {
+        final String url="127.0.0.1";
+        final int port=30216;
+        WebServer WP = new WebServer(url, port);
+        System.out.println("Ready to accept messages");
+        WP.receive();
+    }
+
     public void receive() {
         this.startHandlers();
         while (true) {

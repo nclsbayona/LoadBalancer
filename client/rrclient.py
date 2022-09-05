@@ -1,16 +1,24 @@
 import zmq
 
-url="localhost"
-port=8080
-#  Prepare our context and sockets
-context = zmq.Context()
-socket:zmq.Socket = context.socket(zmq.REQ)
-socket.connect("tcp://{url}:{port}".format(**locals()))
+class Client:
+    __slots__=['context', 'socket']
+    def __init__(self, url: str, port:int):
+        #  Prepare our context and sockets
+        self.context:zmq.context = zmq.Context()
+        self.socket:zmq.Socket = self.context.socket(zmq.REQ)
+        self.socket.connect("tcp://{url}:{port}".format(**locals()))
 
-#  Do 10 requests, waiting each time for a response
-for request in range(1, 11):
-    socket.send_string("Hello from client")
-    print ("Waiting here")
-    print ("Waiting here - 2")
-    message=socket.recv_multipart()
-    print(f"Received reply {request} [{message}]")
+    def receive(self):
+        #  Do 10 requests, waiting each time for a response
+        for _ in range(1, 11):
+            msg=input("Enter your message to be sent: ")
+            self.socket.send_string(msg)
+            message=self.socket.recv_multipart()
+            print(f"Received reply {message} to {msg}")
+
+
+if __name__=='__main__':
+    url="localhost"
+    port=8080
+    client=Client(url=url, port=port)
+    client.receive()

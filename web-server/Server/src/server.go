@@ -4,8 +4,20 @@ import (
     "database/sql"
     "fmt"
     _ "github.com/lib/pq"
+    zmq "github.com/alecthomas/gozmq"
 )
- 
+type Product struct{
+    id int;
+    product_type string;
+    color string;
+    name string;
+    additional string;
+}
+
+func (product Product) printProduct() string{
+    return fmt.Sprintf("Type: %s, number: %d --> Name: %s, color: %s, %s", product.product_type, product.id, product.name, product.color, product.additional)
+}
+
 const (
     host     = "localhost"
     port     = 5432
@@ -15,84 +27,122 @@ const (
 )
  
 func main() {
+    context, _ := zmq.NewContext()
+    defer context.Close()
+	// Socket to talk to clients
+	responder, _ := context.NewSocket(zmq.REP)
+	defer responder.Close()
+    url:="localhost"
+    port:=30216
+    responder.Connect(fmt.Sprintf("tcp://%s:%d", url, port))
     // connection string
     psqlconn := fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=disable", host, port, user, password, dbname)
     // open database
     db, err := sql.Open("postgres", psqlconn)
-    CheckError(err)
-    // close database
+    // close database at end
     defer db.Close()
-    checkConnectionToDB(db)
-    fmt.Println(consult(db))
+    if (!CheckError(err)){
+        if (!checkConnectionToDB(db)){
+            for {
+                //  Wait for next request from client
+                request, _ := responder.Recv(0)
+                fmt.Printf("Received request: [%s]\n", request)
+                fmt.Println(consult(db))
+                //Trying to buy a product
+                fmt.Println(buyProduct(db, 2, checkLogin(db, "eruiz", "test3")))
+                // Do some 'work'
+                time.Sleep(1 * time.Second)
+        
+                // Send reply back to client
+                responder.Send([]byte("World"), 0)
+            }
+        }
+    }
+}
+
+func menu() string{
+    return "To see the available products, send 'c'\nTo buy a product, send '<username>,<password>,<product_number>'"
 }
 
 func consult(db *sql.DB) string{
     var full string="\n"
-    full+=printShoes(db)
-    full+="\n"
-    full+=printElectronics(db)
+    full+=printProducts(db)
     full+="\n"
     return full
 }
 
-func printShoes(db *sql.DB) string{
-    var full string //Store all
-    rows, err := db.Query(`SELECT * FROM Shoes`)
-    CheckError(err)
-    //Columns
+func buyProduct(db *sql.DB, product_ID int, customer_ID string) string{
+    var bought string="Please try again, this product appears to be already purchased."
     var id int
-    var name string
-    var color string
-    var shoe_type string
-    // To store the string to print
-    var shoe string
-    //    
-    full+="------\n"
-    full+="Shoes\n"
-    full+="------\n"
+    rows, err := db.Query(fmt.Sprintf("SELECT ID FROM Products where Owner_ID IS NULL AND ID=%d", product_ID)) //If Owner_ID is null, then it is available to be purchased
+    if (!CheckError(err)){
+        defer rows.Close()
+        for rows.Next() {
+            err = rows.Scan(&id)
+            CheckError(err)
+        }
+    }
+    if (id==product_ID){
+        bought="You succesfully purchased the product!"
+        _, err := db.Query(fmt.Sprintf("UPDATE Products SET Owner_ID='%s' WHERE ID=%d", customer_ID, product_ID))
+        if (CheckError(err)){
+            bought="A problem ocurred when purchasing, please try again..."
+        }
+    }
+    return bought
+}
+
+func printProducts(db *sql.DB) string{
+    var full string //Store all
+    rows, err := db.Query(`SELECT ID, color, product_name, product_type, additional FROM Products where Owner_ID IS NULL`) //If Owner_ID is null, then it is available to be purchased
     defer rows.Close()
-    for rows.Next() {
-        err = rows.Scan(&id, &color, &name, &shoe_type)
-        CheckError(err)
-        shoe=fmt.Sprintf("Shoe %d --> Name: %s, color: %s, type: %s", id, name, color, shoe_type)
-        full+=shoe+"\n"
+    if (!CheckError(err)){
+        //Columns
+        var id int
+        var name string
+        var color string
+        var product_type string
+        var additional string
+        // To store the string to print
+        var product Product
+        //    
+        full+="--------\n"
+        full+="Products\n"
+        full+="--------\n"
+        for rows.Next() {
+            err = rows.Scan(&id, &color, &name, &product_type, &additional)
+            CheckError(err)
+            if (!CheckError(err)){
+                product=Product{id, product_type, color, name, additional}
+                full+=product.printProduct()+"\n"
+            }else{
+                full+="There was an error, please try again\n"
+            }
+        }
     }
     return full
 }
 
-func printElectronics(db *sql.DB) string{
-    var full string //Store all
-    rows, err := db.Query(`SELECT * FROM Electronics`)
-    CheckError(err)
-    //Columns
-    var id int
-    var name string
-    var color string
-    var weight float32
-    // To store the string to print
-    var electronic string
-    //    
-    full+="-----------\n"
-    full+="Electronics\n"
-    full+="-----------\n"
+func checkLogin(db *sql.DB, username string, password string) string{
+    statement:=fmt.Sprintf("SELECT ID FROM Customers where username='%s' AND password=crypt('%s', password)", username, password)
+    rows, err := db.Query(statement)
+    var full string
     defer rows.Close()
-    for rows.Next() {
-        err = rows.Scan(&id, &color, &name, &weight)
-        CheckError(err)
-        electronic=fmt.Sprintf("Electronic %d --> Name: %s, color: %s, weight: %fkg", id, name, color, weight)
-        full+=electronic+"\n"
+    if (!CheckError(err)){
+        for rows.Next() {
+            err = rows.Scan(&full)
+            CheckError(err)
+        }
     }
     return full
 }
 
-func checkConnectionToDB(db *sql.DB){
+func checkConnectionToDB(db *sql.DB) bool{
     // check db
     err := db.Ping()
-    CheckError(err)
+    return CheckError(err)
 }
  
-func CheckError(err error) {
-    if err != nil {
-        panic(err)
-    }
+func CheckError(err error) bool{
+    return err!=nil
 }

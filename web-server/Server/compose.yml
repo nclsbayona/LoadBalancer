@@ -1,0 +1,6 @@
+version: '2'
+services:
+  server:
+    image: nclsbayona/zeromq-dev
+    volumes:
+      - .:/home

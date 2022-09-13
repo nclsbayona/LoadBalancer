@@ -3,8 +3,9 @@ package main
 import (
     "database/sql"
     "fmt"
+    "strings"
     _ "github.com/lib/pq"
-    zmq "github.com/alecthomas/gozmq"
+    zmq "github.com/pebbe/zmq4"
 )
 type Product struct{
     id int;
@@ -28,7 +29,6 @@ const (
  
 func main() {
     context, _ := zmq.NewContext()
-    defer context.Close()
 	// Socket to talk to clients
 	responder, _ := context.NewSocket(zmq.REP)
 	defer responder.Close()
@@ -51,17 +51,28 @@ func main() {
                 //Trying to buy a product
                 fmt.Println(buyProduct(db, 2, checkLogin(db, "eruiz", "test3")))
                 // Do some 'work'
-                time.Sleep(1 * time.Second)
-        
                 // Send reply back to client
-                responder.Send([]byte("World"), 0)
+                responder.Send("World", 0)
             }
         }
     }
 }
 
+func processRequest(request string, db *sql.DB) string{
+    full:=""
+    if (request=="help"){
+        full=menu()
+    }else if(request=="consult"){
+        full=printProducts(db)
+    }else{
+        split_request := strings.SplitN(request, ",", 3)
+        full = split_request[0]
+    }
+    return full
+}
+
 func menu() string{
-    return "To see the available products, send 'c'\nTo buy a product, send '<username>,<password>,<product_number>'"
+    return "To see the available products, send 'consult'\nTo buy a product, send '<username>,<password>,<product_number>'\nTo see help, send 'help'"
 }
 
 func consult(db *sql.DB) string{

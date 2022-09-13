@@ -2,5 +2,6 @@ version: '2'
 services:
   server:
     image: nclsbayona/zeromq-dev
+    command: sleep 10d
     volumes:
       - .:/home

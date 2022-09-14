@@ -3,11 +3,11 @@ name: Build Container Image
 on:
   push:
     branches:
-      - master
+      - modifications
     paths:
       - Dockerfile
   schedule:
-    - cron: "0 8 * * */15"
+    - cron: "0 0 * * *"
   workflow_dispatch:
 
 env:

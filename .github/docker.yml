@@ -12,7 +12,7 @@ on:
 
 env:
  REGISTRY: docker.io
- IMAGE_NAME: resume_on_markdown
+ IMAGE_NAME: zeromq-dev
  USERNAME:  ${{ github.actor }}
 
 concurrency:

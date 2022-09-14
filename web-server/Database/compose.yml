@@ -1,0 +1,11 @@
+version: '2'
+services:
+  postgresql-database:
+    image: postgres:11.3
+    volumes:
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+    environment:
+      - POSTGRES_USER=distribuidos
+      - POSTGRES_PASSWORD=javeriana
+    ports:
+      - 5432:5432

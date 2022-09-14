@@ -10,11 +10,11 @@ class Client:
 
     def receive(self):
         #  Do 10 requests, waiting each time for a response
-        for _ in range(1, 11):
+        while (True):
             msg=input("Enter your message to be sent: ")
             self.socket.send_string(msg)
-            message=self.socket.recv_multipart()
-            print(f"Received reply {message} to {msg}")
+            message=self.socket.recv()
+            print(f"Received reply \n\n{message.decode()}\n\nto {msg}")
 
 
 if __name__=='__main__':

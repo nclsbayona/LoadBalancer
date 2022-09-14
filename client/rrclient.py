@@ -10,7 +10,7 @@ class Client:
 
     def receive(self):
         #  Do 10 requests, waiting each time for a response
-        while (true):
+        while (True):
             msg=input("Enter your message to be sent: ")
             self.socket.send_string(msg)
             message=self.socket.recv()

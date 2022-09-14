@@ -4,6 +4,7 @@ import (
     "database/sql"
     "fmt"
     "strings"
+    "strconv"
     _ "github.com/lib/pq"
     zmq "github.com/pebbe/zmq4"
 )
@@ -47,13 +48,10 @@ func main() {
             for {
                 //  Wait for next request from client
                 request, _ := responder.Recv(0)
-                fmt.Printf("Received request: [%s]\n", request)
-                fmt.Println(consult(db))
-                //Trying to buy a product
-                fmt.Println(buyProduct(db, 2, checkLogin(db, "eruiz", "test3")))
-                // Do some 'work'
                 // Send reply back to client
-                responder.Send("World", 0)
+                response := processRequest(request, db)
+                fmt.Printf("Received request\n%s\nAnd sending response \n%s\n\n", request, response)
+                responder.Send(response, 0)
             }
         }
     }
@@ -67,7 +65,21 @@ func processRequest(request string, db *sql.DB) string{
         full=printProducts(db)
     }else{
         split_request := strings.SplitN(request, ",", 3)
-        full = split_request[0]
+        if (len(split_request)!=3){
+            full = "Please try again, send 'help' for help"
+        }else{
+            username := split_request[0]
+            password := split_request[1]
+            id, err := strconv.Atoi(split_request[2])
+            if (id == 0 || CheckError(err)){
+                full = "Please try again, send 'help' for help"
+            }else{
+                full = buyProduct(db, id, checkLogin(db, username, password))
+            }
+        }
+        
+        // Trying to buy a product
+        // fmt.Println(buyProduct(db, 2, checkLogin(db, "eruiz", "test3")))
     }
     return full
 }
@@ -156,8 +168,8 @@ func checkConnectionToDB(db *sql.DB) bool{
 }
  
 func CheckError(err error) bool{
-    if (err!=nil){
+    /*if (err!=nil){
         panic(err)
-    }
+    }*/
     return err!=nil
 }

@@ -25,6 +25,9 @@ const (
     user     = "distribuidos"
     password = "javeriana"
     dbname   = "distribuidos" //Like user
+    
+    backend_url="localhost"
+    backend_port=30216
 )
  
 func main() {
@@ -32,9 +35,7 @@ func main() {
 	// Socket to talk to clients
 	responder, _ := context.NewSocket(zmq.REP)
 	defer responder.Close()
-    url:="localhost"
-    port:=30216
-    responder.Connect(fmt.Sprintf("tcp://%s:%d", url, port))
+    responder.Connect(fmt.Sprintf("tcp://%s:%d", backend_url, backend_port))
     // connection string
     psqlconn := fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=disable", host, port, user, password, dbname)
     // open database
@@ -155,5 +156,8 @@ func checkConnectionToDB(db *sql.DB) bool{
 }
  
 func CheckError(err error) bool{
+    if (err!=nil){
+        panic(err)
+    }
     return err!=nil
 }

@@ -21,3 +21,4 @@ RUN ldconfig
 
 RUN rm -rf /home
 RUN pip install pyzmq
+ENTRYPOINT [ "bash" ]

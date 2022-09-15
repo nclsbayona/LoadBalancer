@@ -1,4 +1,6 @@
 import zmq
+from random import choice, randint
+from time import sleep
 
 class Client:
     __slots__=['context', 'socket']
@@ -11,14 +13,16 @@ class Client:
     def receive(self):
         #  Do 10 requests, waiting each time for a response
         while (True):
-            msg=input("Enter your message to be sent: ")
+            sleep(randint(0, 10))
+            # Automatic message
+            msg=choice(["HolaMundo", "help", "consult", "NotConsult", "HelloWorld", "user1,NotThePassword,1"])
             self.socket.send_string(msg)
             message=self.socket.recv()
             print(f"Received reply \n\n{message.decode()}\n\nto {msg}")
 
 
 if __name__=='__main__':
-    url="127.0.0.1"
+    url="load-balancer"
     port=8080
     client=Client(url=url, port=port)
     client.receive()

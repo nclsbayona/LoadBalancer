@@ -20,5 +20,6 @@ RUN make install
 RUN ldconfig
 
 RUN rm -rf /home
+WORKDIR /home
 RUN pip install pyzmq
-ENTRYPOINT [ "bash" ]
+CMD [ "bash" ]

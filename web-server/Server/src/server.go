@@ -21,13 +21,13 @@ func (product Product) printProduct() string{
 }
 
 const (
-    host     = "localhost"
+    host     = "database"
     port     = 5432
     user     = "distribuidos"
     password = "javeriana"
     dbname   = "distribuidos" //Like user
     
-    backend_url="localhost"
+    backend_url="load-balancer"
     backend_port=30216
 )
  

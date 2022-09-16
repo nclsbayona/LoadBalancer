@@ -3,7 +3,7 @@ name: Build Container Image
 on:
   push:
     branches:
-      - modifications
+      - master
     paths:
       - Dockerfile
   schedule:

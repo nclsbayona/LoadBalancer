@@ -14,7 +14,7 @@ services:
             retries: 10
     expose:
       - "5432"
-    
+
   server:
     image: nclsbayona/zeromq-dev
     deploy:
@@ -22,10 +22,7 @@ services:
     command: go run server.go
     volumes:
       - ./web-server/Server/src:/home
-    depends_on:
-      database:
-        condition: service_healthy
-  
+
   load-balancer:
     image: nclsbayona/zeromq-dev
     command: mvn clean compile exec:java
@@ -44,6 +41,4 @@ services:
     command: python3 auto-client.py
     volumes:
       - ./client:/home
-    depends_on:
-      database:
-        condition: service_healthy
+

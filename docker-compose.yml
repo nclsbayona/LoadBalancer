@@ -1,0 +1,50 @@
+version: '3'
+services:
+  database:
+    image: postgres:11.3
+    volumes:
+      - ./web-server/Database/init.sql:/docker-entrypoint-initdb.d/init.sql
+    environment:
+      - POSTGRES_USER=distribuidos
+      - POSTGRES_PASSWORD=javeriana
+    healthcheck:
+            test: [ "CMD", "pg_isready", "-q", "-d", "distribuidos", "-U", "distribuidos" ]
+            timeout: 45s
+            interval: 10s
+            retries: 10
+    expose:
+      - "5432"
+
+  server:
+    image: nclsbayona/zeromq-dev
+    deploy:
+      replicas: 3
+    command: go run server.go
+    volumes:
+      - ./web-server/Server/src:/home
+    depends_on:
+      database:
+        condition: service_healthy
+
+  load-balancer:
+    image: nclsbayona/zeromq-dev
+    command: mvn clean compile exec:java
+    volumes:
+      - ./load-balancer:/home
+    expose:
+      - "30216"
+      - "8080"
+    ports:
+      - "80:8080"
+
+  client:
+    image: nclsbayona/zeromq-dev
+    deploy:
+      replicas: 5
+    command: python3 auto-client.py
+    volumes:
+      - ./client:/home
+    depends_on:
+      database:
+        condition: service_healthy
+

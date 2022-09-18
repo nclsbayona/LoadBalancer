@@ -2,7 +2,7 @@ import zmq
 from random import choice, randint
 from time import sleep
 
-class Client:
+class AutoClient:
     __slots__=['context', 'socket']
     def __init__(self, url: str, port:int):
         #  Prepare our context and sockets
@@ -24,5 +24,5 @@ class Client:
 if __name__=='__main__':
     url="10.5.0.2"
     port=8080
-    client=Client(url=url, port=port)
+    client=AutoClient(url=url, port=port)
     client.receive()

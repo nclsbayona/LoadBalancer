@@ -1,8 +1,12 @@
 package main
  
 import (
+    "os"
+    "os/exec"
+    "runtime"
     "database/sql"
     "fmt"
+    "syscall"
     "strings"
     "strconv"
     _ "github.com/lib/pq"
@@ -20,21 +24,76 @@ func (product Product) printProduct() string{
     return fmt.Sprintf("Type: %s, number: %d --> Name: %s, color: %s, %s", product.product_type, product.id, product.name, product.color, product.additional)
 }
 
+type Server struct {
+    db_host string;
+    db_port int;
+    db_user string;
+    db_password string;
+    db_dbname string;
+    db_type string;
+    db *sql.DB;
+    backend_socket_url string;
+    backend_socket_port string;
+    context *zmq.Context;
+    responder *zmq.Socket;
+}
+
+func (server *Server) Init (db_host string, db_port int, db_user string, db_password string, db_dbname string, db_type string, backend_socket_url string, backend_socket_port int) {
+    context, err:=zmq.NewContext();
+    if (!CheckError(err)){
+        server.context=context;
+        // Socket to talk to clients
+	    responder, err := context.NewSocket(zmq.REP)
+        if (!CheckError(err)){
+            server.responder=responder
+            server.responder.Connect(fmt.Sprintf("tcp://%s:%d", backend_socket_url, backend_socket_port))
+            // open database
+            db, err := sql.Open(db_type, fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=disable",db_host, db_port, db_user, db_password, db_dbname))
+            if (!CheckError(err)){
+                server.db=db
+                if (server.checkConnectionToDB()){
+                    RestartProcess(err)
+                }
+            }else{
+                RestartProcess(err)
+            }
+        }else{
+            RestartProcess(err)
+        }
+    }else{
+        RestartProcess(err);
+    }
+}
+
+func (server *Server) attend (){
+    for {
+        //  Wait for next request from client
+        request, err := server.responder.Recv(0)
+        // Send reply back to client
+        if (!CheckError(err)){
+            response := server.processRequest(request)
+            fmt.Printf("Received request\n%s\nAnd sending response \n%s\n\n", request, response)
+            server.responder.Send(response, 0)
+        }
+    }
+}
+
 const (
-    host     = "database"
+    host     = "localhost"
     port     = 5432
     user     = "distribuidos"
     password = "javeriana"
     dbname   = "distribuidos" //Like user
     
-    backend_url="load-balancer"
+    backend_url="localhost"
     backend_port=30216
 )
  
 func main() {
-    context, _ := zmq.NewContext()
+    /*
+    context, err := zmq.NewContext()
 	// Socket to talk to clients
-	responder, _ := context.NewSocket(zmq.REP)
+	responder, err := context.NewSocket(zmq.REP)
 	defer responder.Close()
     responder.Connect(fmt.Sprintf("tcp://%s:%d", backend_url, backend_port))
     // connection string
@@ -55,14 +114,19 @@ func main() {
             }
         }
     }
+    */
+    server := new(Server)
+    server.Init(host, port, user, password, dbname, "postgres", backend_url, backend_port)
+    fmt.Println("Ready...")
+    server.attend()
 }
 
-func processRequest(request string, db *sql.DB) string{
+func (server *Server) processRequest(request string) string{
     full:=""
     if (request=="help"){
-        full=menu()
+        full=server.menu()
     }else if(request=="consult"){
-        full=printProducts(db)
+        full=server.printProducts()
     }else{
         split_request := strings.SplitN(request, ",", 3)
         if (len(split_request)!=3){
@@ -74,31 +138,28 @@ func processRequest(request string, db *sql.DB) string{
             if (id == 0 || CheckError(err)){
                 full = "Please try again, send 'help' for help"
             }else{
-                full = buyProduct(db, id, checkLogin(db, username, password))
+                full = server.buyProduct(id, server.checkLogin(username, password))
             }
         }
-        
-        // Trying to buy a product
-        // fmt.Println(buyProduct(db, 2, checkLogin(db, "eruiz", "test3")))
     }
     return full
 }
 
-func menu() string{
+func (server *Server) menu() string{
     return "To see the available products, send 'consult'\nTo buy a product, send '<username>,<password>,<product_number>'\nTo see help, send 'help'"
 }
 
-func consult(db *sql.DB) string{
+func (server *Server) consult() string{
     var full string="\n"
-    full+=printProducts(db)
+    full+=server.printProducts()
     full+="\n"
     return full
 }
 
-func buyProduct(db *sql.DB, product_ID int, customer_ID string) string{
+func (server *Server) buyProduct(product_ID int, customer_ID string) string{
     var bought string="Please try again, this product appears to be already purchased."
     var id int
-    rows, err := db.Query(fmt.Sprintf("SELECT ID FROM Products where Owner_ID IS NULL AND ID=%d", product_ID)) //If Owner_ID is null, then it is available to be purchased
+    rows, err := server.db.Query(fmt.Sprintf("SELECT ID FROM Products where Owner_ID IS NULL AND ID=%d", product_ID)) //If Owner_ID is null, then it is available to be purchased
     if (!CheckError(err)){
         defer rows.Close()
         for rows.Next() {
@@ -108,7 +169,7 @@ func buyProduct(db *sql.DB, product_ID int, customer_ID string) string{
     }
     if (id==product_ID){
         bought="You succesfully purchased the product!"
-        _, err := db.Query(fmt.Sprintf("UPDATE Products SET Owner_ID='%s' WHERE ID=%d", customer_ID, product_ID))
+        _, err := server.db.Query(fmt.Sprintf("UPDATE Products SET Owner_ID='%s' WHERE ID=%d", customer_ID, product_ID))
         if (CheckError(err)){
             bought="A problem ocurred when purchasing, please try again..."
         }
@@ -116,9 +177,9 @@ func buyProduct(db *sql.DB, product_ID int, customer_ID string) string{
     return bought
 }
 
-func printProducts(db *sql.DB) string{
+func (server *Server) printProducts() string{
     var full string //Store all
-    rows, err := db.Query(`SELECT ID, color, product_name, product_type, additional FROM Products where Owner_ID IS NULL`) //If Owner_ID is null, then it is available to be purchased
+    rows, err := server.db.Query(`SELECT ID, color, product_name, product_type, additional FROM Products where Owner_ID IS NULL`) //If Owner_ID is null, then it is available to be purchased
     defer rows.Close()
     if (!CheckError(err)){
         //Columns
@@ -147,9 +208,9 @@ func printProducts(db *sql.DB) string{
     return full
 }
 
-func checkLogin(db *sql.DB, username string, password string) string{
+func (server *Server) checkLogin(username string, password string) string{
     statement:=fmt.Sprintf("SELECT ID FROM Customers where username='%s' AND password=crypt('%s', password)", username, password)
-    rows, err := db.Query(statement)
+    rows, err := server.db.Query(statement)
     var full string
     defer rows.Close()
     if (!CheckError(err)){
@@ -161,15 +222,37 @@ func checkLogin(db *sql.DB, username string, password string) string{
     return full
 }
 
-func checkConnectionToDB(db *sql.DB) bool{
+func (server *Server) checkConnectionToDB() bool{
     // check db
-    err := db.Ping()
+    err := server.db.Ping()
     return CheckError(err)
 }
  
 func CheckError(err error) bool{
-    /*if (err!=nil){
-        panic(err)
-    }*/
     return err!=nil
+}
+
+func RestartProcess(err error) error{
+    fmt.Println("Restarting process...")
+    fmt.Println(err)
+    self, err := os.Executable()
+    if err != nil {
+        return err
+    }
+    args := os.Args
+    env := os.Environ()
+    // Windows does not support exec syscall.
+    if runtime.GOOS == "windows" {
+        cmd := exec.Command(self, args[1:]...)
+        cmd.Stdout = os.Stdout
+        cmd.Stderr = os.Stderr
+        cmd.Stdin = os.Stdin
+        cmd.Env = env
+        err := cmd.Run()
+        if err == nil {
+            os.Exit(0)
+        }
+        return err
+    }
+    return syscall.Exec(self, args, env)
 }

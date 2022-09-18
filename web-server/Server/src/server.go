@@ -25,15 +25,7 @@ func (product Product) printProduct() string{
 }
 
 type Server struct {
-    db_host string;
-    db_port int;
-    db_user string;
-    db_password string;
-    db_dbname string;
-    db_type string;
     db *sql.DB;
-    backend_socket_url string;
-    backend_socket_port string;
     context *zmq.Context;
     responder *zmq.Socket;
 }
@@ -79,42 +71,17 @@ func (server *Server) attend (){
 }
 
 const (
-    host     = "localhost"
+    host     = "10.5.0.3"
     port     = 5432
     user     = "distribuidos"
     password = "javeriana"
     dbname   = "distribuidos" //Like user
     
-    backend_url="localhost"
+    backend_url="10.5.0.2"
     backend_port=30216
 )
  
 func main() {
-    /*
-    context, err := zmq.NewContext()
-	// Socket to talk to clients
-	responder, err := context.NewSocket(zmq.REP)
-	defer responder.Close()
-    responder.Connect(fmt.Sprintf("tcp://%s:%d", backend_url, backend_port))
-    // connection string
-    psqlconn := fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=disable", host, port, user, password, dbname)
-    // open database
-    db, err := sql.Open("postgres", psqlconn)
-    // close database at end
-    defer db.Close()
-    if (!CheckError(err)){
-        if (!checkConnectionToDB(db)){
-            for {
-                //  Wait for next request from client
-                request, _ := responder.Recv(0)
-                // Send reply back to client
-                response := processRequest(request, db)
-                fmt.Printf("Received request\n%s\nAnd sending response \n%s\n\n", request, response)
-                responder.Send(response, 0)
-            }
-        }
-    }
-    */
     server := new(Server)
     server.Init(host, port, user, password, dbname, "postgres", backend_url, backend_port)
     fmt.Println("Ready...")
@@ -167,7 +134,9 @@ func (server *Server) buyProduct(product_ID int, customer_ID string) string{
             CheckError(err)
         }
     }
-    if (id==product_ID){
+    if(customer_ID==""){
+        bought="A problem ocurred when purchasing, please try again..."
+    }else if (id==product_ID){
         bought="You succesfully purchased the product!"
         _, err := server.db.Query(fmt.Sprintf("UPDATE Products SET Owner_ID='%s' WHERE ID=%d", customer_ID, product_ID))
         if (CheckError(err)){

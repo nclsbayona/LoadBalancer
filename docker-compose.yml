@@ -12,6 +12,9 @@ services:
             timeout: 45s
             interval: 10s
             retries: 10
+    networks:
+      lb_network:
+        ipv4_address: 10.5.0.3
     expose:
       - "5432"
 
@@ -22,6 +25,8 @@ services:
     command: go run server.go
     volumes:
       - ./web-server/Server/src:/home
+    networks:
+      - lb_network
     depends_on:
       database:
         condition: service_healthy
@@ -31,6 +36,9 @@ services:
     command: mvn clean compile exec:java
     volumes:
       - ./load-balancer:/home
+    networks:
+      lb_network:
+        ipv4_address: 10.5.0.2
     expose:
       - "30216"
       - "8080"
@@ -44,7 +52,16 @@ services:
     command: python3 auto-client.py
     volumes:
       - ./client:/home
+    networks:
+      - lb_network
     depends_on:
       database:
         condition: service_healthy
 
+networks:
+  lb_network:
+    driver: bridge
+    ipam:
+     config:
+       - subnet: 10.5.0.0/16
+         gateway: 10.5.0.1

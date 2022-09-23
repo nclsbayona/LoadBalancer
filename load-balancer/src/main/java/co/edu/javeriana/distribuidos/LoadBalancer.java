@@ -33,7 +33,6 @@ public class LoadBalancer {
         LB.receiveAndSend();
     }
 
-    // We can follow a Simple pirate pattern approach and include the heartbeats
     private static class Listener implements IAttachedRunnable {
 
         @Override

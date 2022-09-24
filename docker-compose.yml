@@ -18,15 +18,50 @@ services:
     expose:
       - "5432"
 
-  server:
+  server1:
     image: nclsbayona/zeromq-dev
-    deploy:
-      replicas: 3
     command: go run server.go
     volumes:
       - ./web-server/Server/src:/home
     networks:
-      - lb_network
+      lb_network:
+        ipv4_address: 10.5.0.4
+    depends_on:
+      database:
+        condition: service_healthy
+        
+  server2:
+    image: nclsbayona/zeromq-dev
+    command: go run server.go
+    volumes:
+      - ./web-server/Server/src:/home
+    networks:
+      lb_network:
+        ipv4_address: 10.5.0.5
+    depends_on:
+      database:
+        condition: service_healthy
+        
+  server3:
+    image: nclsbayona/zeromq-dev
+    command: go run server.go
+    volumes:
+      - ./web-server/Server/src:/home
+    networks:
+      lb_network:
+        ipv4_address: 10.5.0.6
+    depends_on:
+      database:
+        condition: service_healthy
+        
+  server5:
+    image: nclsbayona/zeromq-dev
+    command: go run server.go
+    volumes:
+      - ./web-server/Server/src:/home
+    networks:
+      lb_network:
+        ipv4_address: 10.5.0.10
     depends_on:
       database:
         condition: service_healthy
@@ -45,15 +80,38 @@ services:
     ports:
       - "80:8080"
 
-  client:
+  client1:
     image: nclsbayona/zeromq-dev
-    deploy:
-      replicas: 5
     command: python3 auto-client.py
     volumes:
       - ./client:/home
     networks:
-      - lb_network
+      lb_network:
+        ipv4_address: 10.5.0.7
+    depends_on:
+      database:
+        condition: service_healthy
+        
+  client2:
+    image: nclsbayona/zeromq-dev
+    command: python3 auto-client.py
+    volumes:
+      - ./client:/home
+    networks:
+      lb_network:
+        ipv4_address: 10.5.0.8
+    depends_on:
+      database:
+        condition: service_healthy
+        
+  client3:
+    image: nclsbayona/zeromq-dev
+    command: python3 auto-client.py
+    volumes:
+      - ./client:/home
+    networks:
+      lb_network:
+        ipv4_address: 10.5.0.9
     depends_on:
       database:
         condition: service_healthy

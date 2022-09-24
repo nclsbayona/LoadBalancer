@@ -8,6 +8,8 @@ import org.zeromq.ZMonitor.Event;
 import org.zeromq.ZMonitor.ZEvent;
 import org.zeromq.ZThread.IAttachedRunnable;
 import org.zeromq.ZContext;
+import org.zeromq.ZAuth;
+import org.zeromq.ZAuth.ZapReply;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -20,6 +22,7 @@ public class LoadBalancer {
     // In order to use Round-Robin, we can use DEALER SocketType
     // https://zguide.zeromq.org/docs/chapter5/ mentions Router-Dealer
     // See https://zguide.zeromq.org/docs/chapter4/#reliable-request-reply patterns
+    private ZAuth actor;
     private ZContext ctx;
     private ZMQ.Socket frontend_socket;
     private ZMQ.Socket backend_socket;
@@ -28,7 +31,8 @@ public class LoadBalancer {
 
     public static void main( String[] args ) throws IOException
     {
-        LoadBalancer LB=new LoadBalancer();
+        String ips[]={"10.5.0.4", "10.5.0.5", "10.5.0.6", "10.5.0.7", "10.5.0.8", "10.5.0.9"};
+        LoadBalancer LB=new LoadBalancer(ips);
         System.out.println("Ready...");
         LB.receiveAndSend();
     }
@@ -39,8 +43,8 @@ public class LoadBalancer {
         public void run(Object[] args, ZContext ctx, org.zeromq.ZMQ.Socket pipe) {
             while (true) {
                 ZEvent received = ((ZMonitor) args[0]).nextEvent();
-                System.out.println(args[1] + " received event: " + received.code + " - " + received.type + " from: "
-                        + received.address);
+                ZapReply reply=((ZAuth) args[1]).nextReply();
+                System.out.println(args[2] + " received event: " + received.code + " - " + received.type + " from: " + received.address + " "+ reply);//?"authorized access":"unauthorized access");
             }
         }
     }
@@ -80,12 +84,12 @@ public class LoadBalancer {
             zMonitor.verbose(true); // Verbose Monitor
             zMonitor.add(Event.ALL);
             zMonitor.start();
-            ZThread.fork(ctx, new Listener(), zMonitor, "Backend Server");
+            ZThread.fork(ctx, new Listener(), zMonitor, this.actor, "Backend Server");
             // Monitor the frontend socket
             zMonitor2.verbose(true); // Verbose Monitor
             zMonitor2.add(Event.ALL);
             zMonitor2.start();
-            ZThread.fork(ctx, new Listener(), zMonitor2, "Frontend Server");
+            ZThread.fork(ctx, new Listener(), zMonitor2, this.actor, "Frontend Server");
             // Bind sockets
             this.frontend_socket.bind("tcp://*:" + String.valueOf(this.SERVICE_PORT));
             this.backend_socket.bind("tcp://*:" + String.valueOf(this.BIND_PORT));
@@ -131,7 +135,7 @@ public class LoadBalancer {
                 });
     }
 
-    public LoadBalancer() {
+    public LoadBalancer(String ... ips) {
         // I believe that publisher-subscriber is less
         // adequate than request-reply. See Code Connected
         // by Pieter Hientjens "knowledge is distributed
@@ -140,6 +144,15 @@ public class LoadBalancer {
         // important for understanding this
         // http://hintjens.wdfiles.com/local--files/main%3Afiles/cc1pe.pdf
         this.ctx = new ZContext();
+        this.actor = new ZAuth(this.ctx);
+        this.actor=this.actor.setVerbose(true);
+        
+        for (String ip:ips){
+            this.actor=this.actor.allow(ip);
+        }
+        
+        this.actor=this.actor.replies(true);
+        
         this.frontend_socket = ctx.createSocket(SocketType.ROUTER);
         this.backend_socket = ctx.createSocket(SocketType.DEALER);
     }

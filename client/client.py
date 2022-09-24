@@ -18,7 +18,7 @@ class Client:
 
 
 if __name__=='__main__':
-    url="10.5.0.2"
+    url="192.168.10.29"
     port=8080
     client=Client(url=url, port=port)
     client.receive()

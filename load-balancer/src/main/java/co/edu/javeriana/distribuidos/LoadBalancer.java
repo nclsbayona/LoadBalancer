@@ -31,7 +31,7 @@ public class LoadBalancer {
 
     public static void main( String[] args ) throws IOException
     {
-        String ips[]={"10.5.0.4", "10.5.0.5", "10.5.0.6", "10.5.0.7", "10.5.0.8", "10.5.0.9"};
+        String ips[]={"192.168.122.15", "192.168.10.7"};
         LoadBalancer LB=new LoadBalancer(ips);
         System.out.println("Ready...");
         LB.receiveAndSend();
@@ -43,8 +43,8 @@ public class LoadBalancer {
         public void run(Object[] args, ZContext ctx, org.zeromq.ZMQ.Socket pipe) {
             while (true) {
                 ZEvent received = ((ZMonitor) args[0]).nextEvent();
-                ZapReply reply=((ZAuth) args[1]).nextReply();
-                System.out.println(args[2] + " received event: " + received.code + " - " + received.type + " from: " + received.address + " "+ reply);//?"authorized access":"unauthorized access");
+                //ZapReply reply=((ZAuth) args[1]).nextReply();
+                System.out.println(args[2] + " received event: " + received.code + " - " + received.type + " from: " + received.address);// + " "+ reply);//?"authorized access":"unauthorized access");
             }
         }
     }

@@ -22,7 +22,7 @@ class AutoClient:
 
 
 if __name__=='__main__':
-    url="10.5.0.2"
+    url="load-balancer"
     port=8080
     client=AutoClient(url=url, port=port)
     client.receive()

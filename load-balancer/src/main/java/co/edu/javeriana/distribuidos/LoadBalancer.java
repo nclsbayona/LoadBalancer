@@ -42,8 +42,19 @@ public class LoadBalancer {
         public void run(Object[] args, ZContext ctx, org.zeromq.ZMQ.Socket pipe) {
             while (true) {
                 ZEvent received = ((ZMonitor) args[0]).nextEvent();
-                System.out.println(args[1] + " received event: " + received.code + " - " + received.type + " from: " + received.address);
+                String type=args[1];
+                System.out.println(type + " received event: " + received.code + " - " + received.type + " from: " + received.address);
+                //if (type[0].equals("B") && received==ZEvent.) //Check if its a request for the backend server
+                    
             }
+        }
+    }
+
+    private static class Healthcheck implements IAttachedRunnable {
+
+        @Override
+        public void run(Object[] args, ZContext ctx, org.zeromq.ZMQ.Socket pipe) {
+            // Should ping the server, in case it does not reply (3 times), should start a server
         }
     }
 
@@ -67,7 +78,7 @@ public class LoadBalancer {
                 byte[] received_message=backend.recv(0);
                 if (received_message!=null)
                     response.add(received_message);
-                // Deploy the auxiliary server and what that it connects
+                // Deploy the auxiliary server that it connects
             } while (backend.hasReceiveMore());
             System.out.println("Backend to frontend " + response);
             //Send response from backend to frontend

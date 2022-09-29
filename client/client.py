@@ -18,7 +18,7 @@ class Client:
 
 
 if __name__=='__main__':
-    url="192.168.10.29"
+    url="load-balancer"
     port=8080
     client=Client(url=url, port=port)
     client.receive()

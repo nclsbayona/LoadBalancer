@@ -1,0 +1,3 @@
+FROM nclsbayona/zeromq-dev
+ADD ./client /home
+ENTRYPOINT ["python3","auto-client.py"]

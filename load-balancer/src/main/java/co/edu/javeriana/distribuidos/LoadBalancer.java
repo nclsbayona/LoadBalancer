@@ -9,7 +9,6 @@ import org.zeromq.ZMonitor.ZEvent;
 import org.zeromq.ZThread.IAttachedRunnable;
 import org.zeromq.ZContext;
 import org.zeromq.ZAuth;
-import org.zeromq.ZAuth.ZapReply;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -31,7 +30,7 @@ public class LoadBalancer {
 
     public static void main( String[] args ) throws IOException
     {
-        String ips[]={"192.168.122.15", "192.168.10.7"};
+        String ips[]={"10.5.0.4", "10.5.0.5", "10.5.0.6", "10.5.0.7", "10.5.0.8", "10.5.0.9"};
         LoadBalancer LB=new LoadBalancer(ips);
         System.out.println("Ready...");
         LB.receiveAndSend();
@@ -43,8 +42,7 @@ public class LoadBalancer {
         public void run(Object[] args, ZContext ctx, org.zeromq.ZMQ.Socket pipe) {
             while (true) {
                 ZEvent received = ((ZMonitor) args[0]).nextEvent();
-                //ZapReply reply=((ZAuth) args[1]).nextReply();
-                System.out.println(args[2] + " received event: " + received.code + " - " + received.type + " from: " + received.address);// + " "+ reply);//?"authorized access":"unauthorized access");
+                System.out.println(args[1] + " received event: " + received.code + " - " + received.type + " from: " + received.address);
             }
         }
     }
@@ -66,7 +64,10 @@ public class LoadBalancer {
             //Get response from backend
             ArrayList<byte[]> response = new ArrayList<>();
             do {
-                response.add(backend.recv(0));
+                byte[] received_message=backend.recv(0);
+                if (received_message!=null)
+                    response.add(received_message);
+                // Deploy the auxiliary server and what that it connects
             } while (backend.hasReceiveMore());
             System.out.println("Backend to frontend " + response);
             //Send response from backend to frontend
@@ -80,16 +81,18 @@ public class LoadBalancer {
         this.startHandlers();
         try (ZMonitor zMonitor = new ZMonitor(ctx, this.backend_socket);
                 ZMonitor zMonitor2 = new ZMonitor(ctx, this.frontend_socket)) {
+            // Set timeout
+            this.backend_socket.setReceiveTimeOut(2000);
             // Monitor the backend socket
             zMonitor.verbose(true); // Verbose Monitor
             zMonitor.add(Event.ALL);
             zMonitor.start();
-            ZThread.fork(ctx, new Listener(), zMonitor, this.actor, "Backend Server");
+            ZThread.fork(ctx, new Listener(), zMonitor, "Backend Server");
             // Monitor the frontend socket
             zMonitor2.verbose(true); // Verbose Monitor
             zMonitor2.add(Event.ALL);
             zMonitor2.start();
-            ZThread.fork(ctx, new Listener(), zMonitor2, this.actor, "Frontend Server");
+            ZThread.fork(ctx, new Listener(), zMonitor2, "Frontend Server");
             // Bind sockets
             this.frontend_socket.bind("tcp://*:" + String.valueOf(this.SERVICE_PORT));
             this.backend_socket.bind("tcp://*:" + String.valueOf(this.BIND_PORT));
@@ -147,6 +150,7 @@ public class LoadBalancer {
         this.actor = new ZAuth(this.ctx);
         this.actor=this.actor.setVerbose(true);
         
+        // http://hintjens.com/blog:49
         for (String ip:ips){
             this.actor=this.actor.allow(ip);
         }
@@ -154,6 +158,8 @@ public class LoadBalancer {
         this.actor=this.actor.replies(true);
         
         this.frontend_socket = ctx.createSocket(SocketType.ROUTER);
+        this.frontend_socket.setZAPDomain("global");
         this.backend_socket = ctx.createSocket(SocketType.DEALER);
+        this.backend_socket.setZAPDomain("global");
     }
 }

@@ -6,6 +6,10 @@ on:
       - master
     paths:
       - Dockerfile
+      - Dockerfile-load_balancer
+      - Dockerfile-server
+      - Dockerfile-client
+      - Dockerfile-auto_client
   schedule:
     - cron: "0 0 * * */15"
   workflow_dispatch:

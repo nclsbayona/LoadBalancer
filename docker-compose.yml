@@ -1,5 +1,20 @@
 version: '3'
 services:
+  wireshark:
+    image: lscr.io/linuxserver/wireshark:latest
+    container_name: wireshark
+    cap_add:
+      - NET_ADMIN
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=America/Bogota
+    networks:
+      lb_network:
+        ipv4_address: 10.5.0.11
+    ports:
+      - 3000:3000 #optional
+
   database:
     image: postgres:11.3
     volumes:

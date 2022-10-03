@@ -30,8 +30,9 @@ public class LoadBalancer {
 
     public static void main( String[] args ) throws IOException
     {
-        String ips[]={"10.5.0.4", "10.5.0.5", "10.5.0.6", "10.5.0.7", "10.5.0.8", "10.5.0.9"};
-        LoadBalancer LB=new LoadBalancer(ips);
+        String serverIps[]={"10.5.0.4", "10.5.0.5", "10.5.0.6"};
+        String clientIps[]={"10.5.0.7", "10.5.0.8", "10.5.0.9"};
+        LoadBalancer LB=new LoadBalancer(clientIps, serverIps);
         System.out.println("Ready...");
         LB.receiveAndSend();
     }
@@ -42,11 +43,17 @@ public class LoadBalancer {
         public void run(Object[] args, ZContext ctx, org.zeromq.ZMQ.Socket pipe) {
             while (true) {
                 ZEvent received = ((ZMonitor) args[0]).nextEvent();
-                String type=args[1];
+                String type=String.valueOf(args[1]);
                 System.out.println(type + " received event: " + received.code + " - " + received.type + " from: " + received.address);
-                //if (type[0].equals("B") && received==ZEvent.) //Check if its a request for the backend server
-                    
             }
+        }
+    }
+
+    private static class HealthcheckAuxiliary implements IAttachedRunnable {
+
+        @Override
+        public void run(Object[] args, ZContext ctx, org.zeromq.ZMQ.Socket pipe) {
+            // Should ping the server, in case it does not reply (3 times), should start a new server ( go run server.go ), it should mark server as not alive and exit
         }
     }
 
@@ -54,7 +61,7 @@ public class LoadBalancer {
 
         @Override
         public void run(Object[] args, ZContext ctx, org.zeromq.ZMQ.Socket pipe) {
-            // Should ping the server, in case it does not reply (3 times), should start a server
+            // This should ping all servers, once it is alive, this should mark that as alive and being checked
         }
     }
 
@@ -92,8 +99,6 @@ public class LoadBalancer {
         this.startHandlers();
         try (ZMonitor zMonitor = new ZMonitor(ctx, this.backend_socket);
                 ZMonitor zMonitor2 = new ZMonitor(ctx, this.frontend_socket)) {
-            // Set timeout
-            this.backend_socket.setReceiveTimeOut(2000);
             // Monitor the backend socket
             zMonitor.verbose(true); // Verbose Monitor
             zMonitor.add(Event.ALL);
@@ -149,7 +154,7 @@ public class LoadBalancer {
                 });
     }
 
-    public LoadBalancer(String ... ips) {
+    public LoadBalancer(String[] clientIps, String[] serverIps) {
         // I believe that publisher-subscriber is less
         // adequate than request-reply. See Code Connected
         // by Pieter Hientjens "knowledge is distributed
@@ -162,7 +167,10 @@ public class LoadBalancer {
         this.actor=this.actor.setVerbose(true);
         
         // http://hintjens.com/blog:49
-        for (String ip:ips){
+        for (String ip:clientIps){
+            this.actor=this.actor.allow(ip);
+        }
+        for (String ip:serverIps){
             this.actor=this.actor.allow(ip);
         }
         

@@ -1,4 +1,5 @@
 FROM nclsbayona/zeromq-dev
+ADD ./load-balancer-maven /root/.m2
 ADD ./load-balancer /home
 ADD ./web-server/Server/src /home
 ENTRYPOINT ["mvn","clean","compile","exec:java"]

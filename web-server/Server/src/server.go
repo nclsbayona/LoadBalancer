@@ -44,7 +44,7 @@ func (server *Server) Init (db_host string, db_port int, db_user string, db_pass
             if (!CheckError(err)){
                 server.db=db
                 if (server.checkConnectionToDB()){
-                    RestartProcess(err)
+                    RestartProcess(err);
                 }
             }else{
                 RestartProcess(err)
@@ -71,13 +71,13 @@ func (server *Server) attend (){
 }
 
 const (
-    host     = "database"
+    host     = "localhost"//"database"
     port     = 5432
     user     = "distribuidos"
     password = "javeriana"
     dbname   = "distribuidos" //Like user
     
-    backend_url="load-balancer"
+    backend_url="localhost"//"load-balancer"
     backend_port=30216
 )
  

@@ -13,6 +13,7 @@ class Client:
         while (True):
             msg=input("Enter your message to be sent: ")
             self.socket.send_string(msg)
+            print (f"Just send {msg}")
             message=self.socket.recv()
             print(f"Received reply \n\n{message.decode()}\n\nto {msg}")
 

@@ -30,7 +30,7 @@ public class LoadBalancer {
 
     public static void main( String[] args ) throws IOException
     {
-        String serverIps[]={"10.5.0.4", "10.5.0.5", "10.5.0.6"};
+        String serverIps[]={"10.5.0.4", "10.5.0.5", "10.5.0.6", "127.0.0.1"};
         String clientIps[]={"10.5.0.7", "10.5.0.8", "10.5.0.9"};
         LoadBalancer LB=new LoadBalancer(clientIps, serverIps);
         System.out.println("Ready...");
@@ -53,7 +53,7 @@ public class LoadBalancer {
 
         @Override
         public void run(Object[] args, ZContext ctx, org.zeromq.ZMQ.Socket pipe) {
-            // Should ping the server, in case it does not reply (3 times), should start a new server ( go run server.go ), it should mark server as not alive and exit
+            // Should ping the server, in case it does not reply (3 times), it should mark server as not alive and exit
         }
     }
 
@@ -61,8 +61,9 @@ public class LoadBalancer {
 
         @Override
         public void run(Object[] args, ZContext ctx, org.zeromq.ZMQ.Socket pipe) {
-            String[] servers=args[0]
-            // This should ping all servers, once it is alive, this should mark that as alive and being checked
+            String[] servers=(String[]) args[0];
+            // This has to check if servers are alive, in case there aren't any servers alive, this should create a server and once there's at least one connected, should kill that server.
+            // Once 
         }
     }
 
@@ -83,10 +84,18 @@ public class LoadBalancer {
             //Get response from backend
             ArrayList<byte[]> response = new ArrayList<>();
             do {
-                byte[] received_message=backend.recv(0);
-                if (received_message!=null)
-                    response.add(received_message);
-                // Deploy the auxiliary server that it connects
+                byte[] received_message;
+                received_message=backend.recv(0);
+                if (received_message==null){
+                    while (received_message==null) {
+                        //Send the message again until I get a response
+                        backend.sendMore(id);
+                        backend.sendMore(ZMQ.MESSAGE_SEPARATOR);
+                        backend.send(msg);
+                        received_message=backend.recv(0);
+                    }
+                }
+                response.add(received_message);
             } while (backend.hasReceiveMore());
             System.out.println("Backend to frontend " + response);
             //Send response from backend to frontend
@@ -110,10 +119,12 @@ public class LoadBalancer {
             zMonitor2.add(Event.ALL);
             zMonitor2.start();
             ZThread.fork(ctx, new Listener(), zMonitor2, "Frontend Server");
+            // Set socket timeouts
             // Bind sockets
             this.frontend_socket.bind("tcp://*:" + String.valueOf(this.SERVICE_PORT));
             this.backend_socket.bind("tcp://*:" + String.valueOf(this.BIND_PORT));
-            ZMQ.sleep(2);
+            
+            System.out.println("Load Balancer is ready");
             while (true) {
                 /*
                  * When we use a DEALER to talk to a REP socket, we must accurately emulate the

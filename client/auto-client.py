@@ -17,12 +17,13 @@ class AutoClient:
             # Automatic message
             msg=choice(["HolaMundo", "help", "consult", "NotConsult", "HelloWorld", "user1,NotThePassword,1"])
             self.socket.send_string(msg)
+            print (f"Just send {msg}")
             message=self.socket.recv()
             print(f"Received reply \n\n{message.decode()}\n\nto {msg}")
 
 
 if __name__=='__main__':
-    url="load-balancer"
+    url="localhost"#"load-balancer"
     port=8080
     client=AutoClient(url=url, port=port)
     client.receive()

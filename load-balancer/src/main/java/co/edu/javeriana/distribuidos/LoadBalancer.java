@@ -61,6 +61,7 @@ public class LoadBalancer {
 
         @Override
         public void run(Object[] args, ZContext ctx, org.zeromq.ZMQ.Socket pipe) {
+            String[] servers=args[0]
             // This should ping all servers, once it is alive, this should mark that as alive and being checked
         }
     }

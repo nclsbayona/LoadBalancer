@@ -34,10 +34,7 @@ services:
       - "5432"
 
   server1:
-    image: nclsbayona/zeromq-dev
-    command: go run server.go
-    volumes:
-      - ./web-server/Server/src:/home
+    image: nclsbayona/zeromq-dev:server
     networks:
       lb_network:
         ipv4_address: 10.5.0.4
@@ -46,10 +43,7 @@ services:
         condition: service_healthy
         
   server2:
-    image: nclsbayona/zeromq-dev
-    command: go run server.go
-    volumes:
-      - ./web-server/Server/src:/home
+    image: nclsbayona/zeromq-dev:server
     networks:
       lb_network:
         ipv4_address: 10.5.0.5
@@ -58,10 +52,7 @@ services:
         condition: service_healthy
         
   server3:
-    image: nclsbayona/zeromq-dev
-    command: go run server.go
-    volumes:
-      - ./web-server/Server/src:/home
+    image: nclsbayona/zeromq-dev:server
     networks:
       lb_network:
         ipv4_address: 10.5.0.6
@@ -70,10 +61,7 @@ services:
         condition: service_healthy
         
   server5:
-    image: nclsbayona/zeromq-dev
-    command: go run server.go
-    volumes:
-      - ./web-server/Server/src:/home
+    image: nclsbayona/zeromq-dev:server
     networks:
       lb_network:
         ipv4_address: 10.5.0.10
@@ -82,10 +70,7 @@ services:
         condition: service_healthy
 
   load-balancer:
-    image: nclsbayona/zeromq-dev
-    command: mvn clean compile exec:java
-    volumes:
-      - ./load-balancer:/home
+    image: nclsbayona/zeromq-dev:load_balancer
     networks:
       lb_network:
         ipv4_address: 10.5.0.2
@@ -96,10 +81,7 @@ services:
       - "80:8080"
 
   client1:
-    image: nclsbayona/zeromq-dev
-    command: python3 auto-client.py
-    volumes:
-      - ./client:/home
+    image: nclsbayona/zeromq-dev:auto_client
     networks:
       lb_network:
         ipv4_address: 10.5.0.7
@@ -108,10 +90,7 @@ services:
         condition: service_healthy
         
   client2:
-    image: nclsbayona/zeromq-dev
-    command: python3 auto-client.py
-    volumes:
-      - ./client:/home
+    image: nclsbayona/zeromq-dev:auto_client
     networks:
       lb_network:
         ipv4_address: 10.5.0.8
@@ -120,10 +99,7 @@ services:
         condition: service_healthy
         
   client3:
-    image: nclsbayona/zeromq-dev
-    command: python3 auto-client.py
-    volumes:
-      - ./client:/home
+    image: nclsbayona/zeromq-dev:auto_client
     networks:
       lb_network:
         ipv4_address: 10.5.0.9

@@ -1,4 +1,6 @@
 #NOTE: This is a Maven Resolver internal implementation file, its format can be changed without prior notice.
-#Mon Oct 03 17:04:03 UTC 2022
+#Tue Oct 04 23:11:23 UTC 2022
+jeromq-0.5.2-javadoc.jar>central=
+jeromq-0.5.2-sources.jar>central=
 jeromq-0.5.2.pom>central=
 jeromq-0.5.2.jar>central=

@@ -22,6 +22,7 @@ public class LoadBalancer {
     // In order to use Round-Robin, we can use DEALER SocketType
     // https://zguide.zeromq.org/docs/chapter5/ mentions Router-Dealer
     // See https://zguide.zeromq.org/docs/chapter4/#reliable-request-reply patterns
+    private String[] servers;
     private ZAuth actor;
     private ZContext ctx;
     private ZMQ.Socket frontend_socket;
@@ -50,96 +51,6 @@ public class LoadBalancer {
         }
     }
 
-    private static class HealthcheckAuxiliary implements IAttachedRunnable {
-
-        // Sends ping request to a provided IP address
-        public static boolean sendPingRequest(String ipAddress) {
-            try {
-                return InetAddress.getByName(ipAddress).isReachable(5000);
-            } catch (Exception e) {
-                return false;
-            }
-        }
-
-        @Override
-        public void run(Object[] args, ZContext ctx, org.zeromq.ZMQ.Socket pipe) {
-            String ip=String.valueOf(args[0]);
-            boolean[] statuses=(boolean[]) args[1];
-            int index= (int) args[2];
-            while (true){
-                boolean replied=sendPingRequest(ip);
-                if (!replied){
-                    boolean should_continue_trying=true;
-                    for (int i=0; i<3 && should_continue_trying; ++i){
-
-                    }
-                    if (should_continue_trying){
-
-                    }
-                }
-            }
-            // Should ping the server, in case it does not reply (3 times), it should mark
-            // server as not alive and exit
-        }
-    }
-
-    private static class Healthcheck implements IAttachedRunnable {
-
-        // Sends ping request to a provided IP address
-        public static boolean sendPingRequest(String ipAddress) {
-            try {
-                return InetAddress.getByName(ipAddress).isReachable(5000);
-            } catch (Exception e) {
-                return false;
-            }
-        }
-
-        public static boolean oneDifferent(boolean[] array) {
-            for (int i = 0; i < array.length; ++i)
-                if (array[i])
-                    return true;
-            return false;
-        }
-
-        @Override
-        public void run(Object[] args, ZContext ctx, org.zeromq.ZMQ.Socket pipe) {
-            String[] servers = (String[]) args[0];
-            boolean[] statuses = new boolean[servers.length-1];
-            for (int i = 0; i < statuses.length; i++)
-                statuses[i] = false;
-
-            // This has to check if servers are alive, in case there aren't any servers
-            // alive, this should create a server and once there's at least one connected,
-            // should kill that server.
-            Process process = null;
-            while (true) {
-                if (process != null && oneDifferent(statuses)) {
-                    process.destroy();
-                    process = null;
-                }
-                for (int i = 0; i < servers.length; i++) {
-                    if (!statuses[i]) {
-                        String server = servers[i];
-                        boolean status = sendPingRequest(server);
-                        statuses[i] = status;
-                        if (status) {
-                            // Start checking for the health
-                            ZThread.fork(ctx, null, new HealthcheckAuxiliary(), server, statuses, i);
-                        }
-                    }
-                }
-                if (!oneDifferent(statuses))
-                    try {
-                        process = new ProcessBuilder("go run server.go").start();
-                    } catch (Exception e) {
-                        // TODO: handle exception
-                    }
-            }
-            // Once there's at least one of the servers connected, the auxiliary server
-            // needs to stop
-        }
-    }
-
     private static class ReplySender implements IAttachedRunnable {
 
         @Override
@@ -159,12 +70,9 @@ public class LoadBalancer {
             ArrayList<byte[]> response = new ArrayList<>();
             do {
                 byte[] received_message;
-                System.err.println("Here");
                 received_message = backend.recv(0);
-                System.err.println("Here2");
                 if (received_message == null) {
                     while (received_message == null) {
-                        System.out.println("Still null");
                         // Send the message again until I get a response
                         backend.sendMore(id);
                         backend.sendMore(ZMQ.MESSAGE_SEPARATOR);
@@ -204,6 +112,8 @@ public class LoadBalancer {
             // Bind sockets
             this.frontend_socket.bind("tcp://*:" + String.valueOf(this.SERVICE_PORT));
             this.backend_socket.bind("tcp://*:" + String.valueOf(this.BIND_PORT));
+            // Start healthcheck mechanism
+            new Thread(new HealthCheck(this.servers)).start();
 
             System.out.println("Load Balancer is ready");
             while (true) {
@@ -259,6 +169,7 @@ public class LoadBalancer {
         this.ctx = new ZContext();
         this.actor = new ZAuth(this.ctx);
         this.actor = this.actor.setVerbose(true);
+        this.servers=serverIps;
 
         // http://hintjens.com/blog:49
         for (String ip : clientIps) {

@@ -71,13 +71,13 @@ func (server *Server) attend (){
 }
 
 const (
-    host     = "localhost"//"database"
+    host     = "10.5.0.3"//"database"
     port     = 5432
     user     = "distribuidos"
     password = "javeriana"
     dbname   = "distribuidos" //Like user
     
-    backend_url="localhost"//"load-balancer"
+    backend_url="10.5.0.2"//"load-balancer"
     backend_port=30216
 )
  

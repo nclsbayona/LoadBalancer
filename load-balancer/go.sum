@@ -1,0 +1,10 @@
+github.com/alecthomas/gozmq v0.0.0-20140622232202-d1b01a2df6b2 h1:avoSu+wd97LeIY/JW9gQQwo6uKmsBOuWtLTJT5ewHWU=
+github.com/alecthomas/gozmq v0.0.0-20140622232202-d1b01a2df6b2/go.mod h1:4M6gCnOnuQEAVnqf5I1tc+/6c6ZiScidY+LkurMUcbY=
+github.com/lib/pq v1.10.6 h1:jbk+ZieJ0D7EVGJYpL9QTz7/YW6UHbmdnZWYyK5cdBs=
+github.com/lib/pq v1.10.6/go.mod h1:AlVN5x4E4T544tWzH6hKfbfQvm3HdbOxrmggDNAPY9o=
+github.com/pebbe/zmq4 v1.2.9 h1:JlHcdgq6zpppNR1tH0wXJq0XK03pRUc4lBlHTD7aj/4=
+github.com/pebbe/zmq4 v1.2.9/go.mod h1:nqnPueOapVhE2wItZ0uOErngczsJdLOGkebMxaO8r48=
+github.com/zeromq/goczmq v4.1.0+incompatible h1:cGVQaU6kIwwrGso0Pgbl84tzAz/h7FJ3wYQjSonjFFc=
+github.com/zeromq/goczmq v4.1.0+incompatible/go.mod h1:1uZybAJoSRCvZMH2rZxEwWBSmC4T7CB/xQOfChwPEzg=
+gopkg.in/zeromq/goczmq.v4 v4.1.0 h1:CE+FE81mGVs2aSlnbfLuS1oAwdcVywyMM2AC1g33imI=
+gopkg.in/zeromq/goczmq.v4 v4.1.0/go.mod h1:h4IlfePEYMpFdywGr5gAwKhBBj+hiBl/nF4VoSE4k+0=

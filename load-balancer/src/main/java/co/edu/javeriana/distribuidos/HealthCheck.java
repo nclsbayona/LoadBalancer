@@ -1,12 +1,13 @@
 package co.edu.javeriana.distribuidos;
 
 import java.net.InetAddress;
+
 public class HealthCheck implements Runnable {
 
     private String[] servers;
 
-    public HealthCheck(String[] servers){
-        this.servers=servers;
+    public HealthCheck(String[] servers) {
+        this.servers = servers;
     }
 
     // Sends ping request to a provided IP address
@@ -38,13 +39,19 @@ public class HealthCheck implements Runnable {
         builder.inheritIO();
         Process process = null;
         for (int i=0; i<statuses.length; ++i){
-            System.out.println(this.servers[i]);
+            statuses[i]=sendPingRequest(this.servers[i]);
         }
         while (true) {
             if (process != null && oneDifferent(statuses)) {
                 System.out.println("There's at least one server connected at the moment, so I need to kill mine...");
-                process.destroy();
-                process = null;
+                try {
+                    System.out.println("Killing process: "+String.valueOf(process.pid()));
+                    new ProcessBuilder("kill","-9",String.valueOf(process.pid())).start();
+                    System.out.println("Process killed successfully!");
+                } catch (Exception e) {
+                } finally {
+                    process=null;
+                }
             }
             for (int i = 0; i < statuses.length; i++) {
                 if (!statuses[i]) {
@@ -61,11 +68,10 @@ public class HealthCheck implements Runnable {
                 try {
                     System.out.println("There's no server connected at the moment, so I need to deploy one...");
                     process = builder.start();
+                    System.out.println("Created process: "+String.valueOf(process.pid()));
                 } catch (Exception e) {
-                    // TODO: handle exception
                 }
         }
-        // Once there's at least one of the servers connected, the auxiliary server
-        // needs to stop
-    }
-}
+    // Once there's at least one of the servers connected, the auxiliary server
+    // needs to stop
+}}

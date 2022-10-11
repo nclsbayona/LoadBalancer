@@ -23,7 +23,7 @@ class AutoClient:
 
 
 if __name__=='__main__':
-    url="localhost"#"load-balancer"
+    url="192.168.10.29"#"load-balancer"
     port=8080
     client=AutoClient(url=url, port=port)
     client.receive()

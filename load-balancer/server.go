@@ -71,16 +71,16 @@ func (server *Server) attend (){
 }
 
 const (
-    host     = "localhost"//"database"
+    host     = "192.168.122.253"//"database"
     port     = 5432
     user     = "distribuidos"
     password = "javeriana"
     dbname   = "distribuidos" //Like user
     
-    backend_url="192.168.10.29"//"load-balancer"
+    backend_url="localhost"//"load-balancer"
     backend_port=30216
 )
- 
+
 func main() {
     server := new(Server)
     server.Init(host, port, user, password, dbname, "postgres", backend_url, backend_port)

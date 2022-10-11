@@ -11,7 +11,6 @@ import org.zeromq.ZContext;
 import org.zeromq.ZAuth;
 
 import java.io.IOException;
-import java.net.InetAddress;
 import java.util.ArrayList;
 import org.zeromq.SocketType;
 
@@ -31,8 +30,8 @@ public class LoadBalancer {
     private final int BIND_PORT = 30216; // The port that LoadBalancer should be using to query servers
 
     public static void main(String[] args) throws IOException {
-        String serverIps[] = { "10.5.0.4", "10.5.0.5", "10.5.0.6", "127.0.0.1" };
-        String clientIps[] = { "10.5.0.7", "10.5.0.8", "10.5.0.9" };
+        String serverIps[] = { "192.168.122.253", "127.0.0.1" };
+        String clientIps[] = { "192.168.122.252" };
         LoadBalancer LB = new LoadBalancer(clientIps, serverIps);
         System.out.println("Ready...");
         LB.receiveAndSend();

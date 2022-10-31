@@ -112,7 +112,13 @@ public class LoadBalancer {
             this.frontend_socket.bind("tcp://*:" + String.valueOf(this.SERVICE_PORT));
             this.backend_socket.bind("tcp://*:" + String.valueOf(this.BIND_PORT));
             // Start healthcheck mechanism
-            new Thread(new HealthCheck(this.servers)).start();
+            Thread t=new Thread(new HealthCheck(this.servers));
+            t.start();
+            try{
+                t.join();
+            }catch(Exception e){
+                e.printStackTrace();
+            }
 
             System.out.println("Load Balancer is ready");
             while (true) {

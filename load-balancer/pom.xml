@@ -9,7 +9,7 @@
 
   <name>load-balancer</name>
   <!-- FIXME change it to the project's website -->
-  <url>http://www.example.com</url>
+  <url>https://nclsbayona.github.io</url>
 
   <properties>
     <exec.mainClass>co.edu.javeriana.distribuidos.LoadBalancer</exec.mainClass>

@@ -20,7 +20,7 @@ public class HealthCheck implements Runnable {
                     if (process != null)
                         try {
                             process.destroyForcibly().waitFor();
-                            Thread.sleep(500);
+                            Thread.sleep(2000);
                         } catch (Exception e) {
                         }
                     System.exit(0);
@@ -30,7 +30,7 @@ public class HealthCheck implements Runnable {
                     if (process != null)
                         try {
                             process.destroyForcibly().waitFor();
-                            Thread.sleep(500);
+                            Thread.sleep(2000);
                         } catch (Exception e) {
                         }
                     System.exit(0);

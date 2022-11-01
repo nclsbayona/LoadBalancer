@@ -93,7 +93,7 @@ public class HealthCheck implements Runnable {
             if (process == null && !oneDifferent(statuses))
                 try {
                     System.out.println("There's no server connected at the moment, so I need to deploy one...");
-                    new ProcessBuilder("go", "build", "-o", "server" ,"server.go").start();
+                    // new ProcessBuilder("go", "build", "-o", "server" ,"server.go").start();
                     process = builder.start();
                     System.out.println("Created process: " + String.valueOf(process.pid()));
                 } catch (Exception e) {

@@ -2,6 +2,8 @@ package main
  
 import (
     "os"
+    "time"
+    "os/signal"
     "os/exec"
     "runtime"
     "database/sql"
@@ -80,8 +82,19 @@ const (
     backend_url="192.168.10.29"//"load-balancer"
     backend_port=30216
 )
- 
+
+func listenAndCancel(c chan os.Signal) {
+	oscall := <-c
+	fmt.Println("Server received: " + oscall.String())
+	os.Exit(0)
+}
+
 func main() {
+    c := make(chan os.Signal, 1)
+	signal.Notify(c, os.Kill)
+    signal.Notify(c, os.Interrupt)
+	// Goroutine (Concurrent routine) to stop the server
+	go listenAndCancel(c)
     server := new(Server)
     server.Init(host, port, user, password, dbname, "postgres", backend_url, backend_port)
     fmt.Println("Ready...")
@@ -204,6 +217,8 @@ func CheckError(err error) bool{
 func RestartProcess(err error) error{
     fmt.Println("Restarting process...")
     fmt.Println(err)
+    // Calling Sleep method
+	time.Sleep(10 * time.Second)
     self, err := os.Executable()
     if err != nil {
         return err

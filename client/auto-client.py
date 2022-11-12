@@ -1,5 +1,5 @@
 import zmq
-from random import choice, randint
+from random import choice
 from time import sleep
 
 class AutoClient:
@@ -13,17 +13,23 @@ class AutoClient:
     def receive(self):
         #  Do 10 requests, waiting each time for a response
         while (True):
-            sleep(randint(0, 10))
             # Automatic message
             msg=choice(["HolaMundo", "help", "consult", "NotConsult", "HelloWorld", "user1,NotThePassword,1"])
             self.socket.send_string(msg)
             print (f"Just send {msg}")
             message=self.socket.recv()
             print(f"Received reply \n\n{message.decode()}\n\nto {msg}")
+            sleep(2)
+            
+    def __del__(self):
+        self.socket.close()
 
 
 if __name__=='__main__':
     url="192.168.10.29"#"load-balancer"
     port=8080
     client=AutoClient(url=url, port=port)
-    client.receive()
+    try:
+        client.receive()
+    except:
+        del client

@@ -17,9 +17,14 @@ class Client:
             message=self.socket.recv()
             print(f"Received reply \n\n{message.decode()}\n\nto {msg}")
 
+    def __del__(self):
+        self.socket.close()
 
 if __name__=='__main__':
     url="192.168.10.29"
     port=8080
     client=Client(url=url, port=port)
-    client.receive()
+    try:
+        client.receive()
+    except:
+        del client

@@ -9,9 +9,33 @@ public class HealthCheck implements Runnable {
 
     private String[] servers;
     private Process process = null;
+    private boolean block_kill=false;
+
+    public Process getProcess() {
+        return this.process;
+    }
 
     public HealthCheck(String[] servers) {
         this.servers = servers;
+    }
+
+    void startProcess() {
+        if (process == null) {
+            try {
+                this.block_kill=true;
+                ProcessBuilder builder = new ProcessBuilder("./server");
+                builder.inheritIO();
+                process = builder.start();
+                System.out.println("Created process: " + String.valueOf(process.pid()));
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+    }
+    
+    boolean endHelp(){
+        this.block_kill=false;
+        return !this.block_kill;
     }
 
     public void startHandlers() {
@@ -68,7 +92,7 @@ public class HealthCheck implements Runnable {
             statuses[i] = sendPingRequest(this.servers[i]);
         }
         while (true) {
-            if (process != null && oneDifferent(statuses)) {
+            if (process != null && oneDifferent(statuses) && !block_kill) {
                 System.out.println("There's at least one server connected at the moment, so I need to kill mine...");
                 try {
                     System.out.println("Killing process: " + String.valueOf(process.pid()));

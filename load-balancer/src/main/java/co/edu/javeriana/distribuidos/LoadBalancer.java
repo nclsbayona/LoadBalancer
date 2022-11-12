@@ -33,7 +33,7 @@ public class LoadBalancer {
         String serverIps[] = { "192.168.122.253", "127.0.0.1" };
         String clientIps[] = { "192.168.122.252" };
         LoadBalancer LB = new LoadBalancer(clientIps, serverIps);
-        System.out.println("Ready...");
+        System.out.println("Ready with PID: "+String.valueOf(ProcessHandle.current().pid()));
         LB.receiveAndSend();
     }
 
@@ -60,6 +60,7 @@ public class LoadBalancer {
             byte[] msg = (byte[]) (args[1]); // Get the message that needs to be processed
             ZMQ.Socket backend = (ZMQ.Socket) args[2]; // Backend Socket
             ZMQ.Socket frontend = (ZMQ.Socket) args[3]; // Frontend Socket
+            HealthCheck h=(HealthCheck) args[4]; // Healthcheck thread
             System.out.println("ID: " + id + " Frontend to backend " + msg);
             // Send to backend
             backend.sendMore(id);
@@ -71,17 +72,28 @@ public class LoadBalancer {
                 byte[] received_message;
                 received_message = backend.recv(0);
                 if (received_message == null) {
+                    int i=0;
                     while (received_message == null) {
+                        // This is a mechanism similar to a timeout
+                        System.err.println(i);
+                        if (++i>=3)
+                            h.startProcess();
                         // Send the message again until I get a response
                         backend.sendMore(id);
                         backend.sendMore(ZMQ.MESSAGE_SEPARATOR);
                         backend.send(msg);
                         received_message = backend.recv(0);
+                        
+                        try {
+                            Thread.sleep(500);
+                        } catch (Exception e) {
+                            e.printStackTrace();
+                        }
                     }
                 }
                 response.add(received_message);
             } while (backend.hasReceiveMore());
-            System.out.println("Backend to frontend " + response);
+            System.out.println(h.endHelp() + " Backend to frontend " + response);
             // Send response from backend to frontend
             for (int i = 0; i < response.size() - 1; ++i)
                 frontend.sendMore(response.get(i));
@@ -95,12 +107,12 @@ public class LoadBalancer {
                 ZMonitor zMonitor2 = new ZMonitor(ctx, this.frontend_socket)) {
             // Monitor the backend socket
             zMonitor.verbose(true); // Verbose Monitor
-            zMonitor.add(Event.ALL);
+            zMonitor.add(Event.HANDSHAKE_PROTOCOL,Event.DISCONNECTED);
             zMonitor.start();
             ZThread.fork(ctx, new Listener(), zMonitor, "Backend Server");
             // Monitor the frontend socket
             zMonitor2.verbose(true); // Verbose Monitor
-            zMonitor2.add(Event.ALL);
+            zMonitor2.add(Event.HANDSHAKE_PROTOCOL,Event.DISCONNECTED);
             zMonitor2.start();
             ZThread.fork(ctx, new Listener(), zMonitor2, "Frontend Server");
             // Set socket timeouts
@@ -112,13 +124,9 @@ public class LoadBalancer {
             this.frontend_socket.bind("tcp://*:" + String.valueOf(this.SERVICE_PORT));
             this.backend_socket.bind("tcp://*:" + String.valueOf(this.BIND_PORT));
             // Start healthcheck mechanism
-            Thread t=new Thread(new HealthCheck(this.servers));
+            HealthCheck h=new HealthCheck(this.servers);
+            Thread t=new Thread(h);
             t.start();
-            try{
-                t.join();
-            }catch(Exception e){
-                e.printStackTrace();
-            }
 
             System.out.println("Load Balancer is ready");
             while (true) {
@@ -141,7 +149,7 @@ public class LoadBalancer {
                                                                    // list
                     } while (this.frontend_socket.hasReceiveMore());
                     ZThread.fork(ctx, new ReplySender(), message.get(0), message.get(2), this.backend_socket,
-                            this.frontend_socket); // Create a ReplySender
+                            this.frontend_socket, h); // Create a ReplySender
                 } catch (Exception e) {
                 }
             }

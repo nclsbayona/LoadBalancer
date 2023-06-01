@@ -1,0 +1,22 @@
+# There is no need to specify a version here, because we are using the latest version of Docker Compose. 
+# It is recommended to always use the latest version of Docker Compose, because it is backwards compatible.
+services:
+  # The web-server service will build an image from the Dockerfile in the Server folder
+  web-server:
+    build:
+      context: ./Server
+  # The database service will build an image from the Dockerfile in the Database folder
+  database:
+    build:
+      context: ./Database
+  # The load-balancer service will build an image from the Dockerfile in the LoadBalancer folder
+  load-balancer:
+    build:
+      context: ./LoadBalancer
+  # The client service will build an image from the Dockerfile in the Client folder
+  client:
+    build:
+      context: ./Client
+# Docker Compose uses the default network driver, which is the bridge driver and it creates a network specifically for your app.
+# Containers for a service can communicate with each other on a private network, which is isolated from the rest of the machine.
+# Docker Compose creates DNS entries for each service, so that you can use the service name as the hostname.

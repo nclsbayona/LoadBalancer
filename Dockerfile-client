@@ -1,3 +1,0 @@
-FROM nclsbayona/zeromq-dev
-ADD ./client /home
-CMD ["python3","client.py"]

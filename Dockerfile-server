@@ -1,3 +1,0 @@
-FROM nclsbayona/zeromq-dev
-ADD ./web-server/Server/src /home
-ENTRYPOINT ["go","run","server.go"]

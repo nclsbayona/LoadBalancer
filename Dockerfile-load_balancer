@@ -1,4 +1,0 @@
-FROM nclsbayona/zeromq-dev
-ADD ./load-balancer-maven /root/.m2
-ADD ./load-balancer /home
-CMD ["mvn","clean","compile","exec:java"]
